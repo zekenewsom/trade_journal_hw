@@ -1,0 +1,27 @@
+{
+  "name": "@trade-platform/core",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./pnl": "./src/pnl/index.ts",
+    "./financial": "./src/financial/index.ts",
+    "./validation": "./src/validation/index.ts",
+    "./analytics": "./src/analytics/index.ts",
+    "./types": "./src/types/index.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "decimal.js": "^10.4.3",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
