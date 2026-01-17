@@ -14,12 +14,16 @@
   "dependencies": {
     "@trade-platform/core": "workspace:*",
     "@trade-platform/db": "workspace:*",
+    "@trade-platform/integrations": "workspace:*",
     "@trpc/server": "^11.0.0-rc.680",
     "drizzle-orm": "^0.38.3",
+    "papaparse": "^5.4.1",
     "superjson": "^2.2.2",
+    "uuid": "^11.0.5",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/papaparse": "^5.3.15",
     "typescript": "^5.7.2"
   }
 }

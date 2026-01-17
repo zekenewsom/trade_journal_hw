@@ -8,6 +8,14 @@ import { cn } from "@/lib/utils";
 export async function AnalyticsDashboard() {
   const analytics = await api.analytics.summary();
 
+  if (!analytics) {
+    return (
+      <div className="text-center text-muted-foreground py-12">
+        No analytics data available. Import some trades to get started.
+      </div>
+    );
+  }
+
   const totalPnl = Number(analytics.totalRealizedNetPnl) || 0;
 
   return (
@@ -59,8 +67,8 @@ export async function AnalyticsDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-500">
-              {analytics.avgWinPnlOverall
-                ? formatCurrency(Number(analytics.avgWinPnlOverall))
+              {analytics.averageWinPnl
+                ? formatCurrency(Number(analytics.averageWinPnl))
                 : "N/A"}
             </div>
           </CardContent>
@@ -73,8 +81,8 @@ export async function AnalyticsDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-500">
-              {analytics.avgLossPnlOverall
-                ? formatCurrency(Number(analytics.avgLossPnlOverall))
+              {analytics.averageLossPnl
+                ? formatCurrency(Number(analytics.averageLossPnl))
                 : "N/A"}
             </div>
           </CardContent>
@@ -155,7 +163,7 @@ export async function AnalyticsDashboard() {
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Longest Loss Streak</dt>
                 <dd className="font-medium text-red-500">
-                  {analytics.longestLossStreak} trades
+                  {analytics.longestLoseStreak} trades
                 </dd>
               </div>
               <div className="flex justify-between">

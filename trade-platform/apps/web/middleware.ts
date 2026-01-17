@@ -10,6 +10,9 @@ const publicPaths = [
   "/api/auth/me",
 ];
 
+// Create the auth middleware
+const authMiddleware = withMiddlewareAuthRequired();
+
 export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -19,7 +22,7 @@ export default function middleware(req: NextRequest) {
   }
 
   // Protect all other routes
-  return withMiddlewareAuthRequired()(req);
+  return authMiddleware(req, {} as any);
 }
 
 export const config = {

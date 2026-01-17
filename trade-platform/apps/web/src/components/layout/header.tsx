@@ -1,6 +1,7 @@
 "use client";
 
 import { useUser } from "@auth0/nextjs-auth0/client";
+import Image from "next/image";
 import { Bell, Menu, Search, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,10 +35,12 @@ export function Header() {
 
         <div className="flex items-center gap-3">
           {user?.picture ? (
-            <img
+            <Image
               src={user.picture}
               alt={user.name || "User"}
-              className="h-8 w-8 rounded-full"
+              width={32}
+              height={32}
+              className="rounded-full"
             />
           ) : (
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">

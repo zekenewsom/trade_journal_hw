@@ -57,8 +57,8 @@ export interface PnlCalculationResult {
 
 export interface AnalyticsFilters {
   dateRange?: {
-    startDate: Date | null;
-    endDate: Date | null;
+    startDate?: Date | null;
+    endDate?: Date | null;
   };
   assetClasses?: AssetClass[];
   exchanges?: string[];
@@ -103,17 +103,19 @@ export interface AnalyticsData {
   totalUnrealizedPnl: string | null;
 
   winRateOverall: number | null;
-  avgWinPnlOverall: string | null;
-  avgLossPnlOverall: string | null;
+  averageWinPnl: string | null;
+  averageLossPnl: string | null;
   largestWinPnl: string | null;
   largestLossPnl: string | null;
   longestWinStreak: number;
-  longestLossStreak: number;
+  longestLoseStreak: number;
   numberOfWinningTrades: number;
   numberOfLosingTrades: number;
   numberOfBreakEvenTrades: number;
   totalFullyClosedTrades: number;
   avgRMultiple: string | null;
+  profitFactor: number | null;
+  expectancy: string | null;
 
   equityCurve: EquityCurvePoint[];
   pnlPerTradeSeries: PnlPerTradePoint[];

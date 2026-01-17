@@ -98,8 +98,8 @@ export function calculateAnalytics(
   const pnlPerTradeSeries: PnlPerTradePoint[] = [];
   const equityCurve: EquityCurvePoint[] = [];
 
-  const pnlByMonth = new Map<string, TimePerformanceData>();
-  const pnlByDayOfWeek = new Map<string, TimePerformanceData>();
+  const pnlByMonth = new Map<string, GroupedPerformance>();
+  const pnlByDayOfWeek = new Map<string, GroupedPerformance>();
   const pnlByAssetClass = new Map<string, GroupedPerformance>();
   const pnlByExchange = new Map<string, GroupedPerformance>();
   const pnlByStrategy = new Map<string, GroupedPerformance>();
@@ -199,6 +199,24 @@ export function calculateAnalytics(
   const avgRMultiple =
     rMultipleCount > 0 ? toString(divide(sumRMultiple, rMultipleCount)) : null;
 
+  // Calculate profit factor (gross wins / abs(gross losses))
+  const absLossPnl = sumLosingPnl.abs();
+  const profitFactor =
+    !isZero(absLossPnl) && greaterThan(sumWinningPnl, 0)
+      ? divide(sumWinningPnl, absLossPnl).toNumber()
+      : null;
+
+  // Calculate expectancy = (Win% * AvgWin) - (Loss% * AvgLoss)
+  let expectancy: string | null = null;
+  if (totalDecidedTrades > 0 && avgWinPnlOverall && avgLossPnlOverall) {
+    const winPct = numberOfWinningTrades / totalDecidedTrades;
+    const lossPct = numberOfLosingTrades / totalDecidedTrades;
+    const avgWin = toDecimal(avgWinPnlOverall);
+    const avgLoss = toDecimal(avgLossPnlOverall).abs();
+    const exp = subtract(multiply(winPct, avgWin), multiply(lossPct, avgLoss));
+    expectancy = toString(exp);
+  }
+
   // Sort and calculate equity curve
   pnlPerTradeSeries.sort((a, b) => a.date - b.date);
   let cumulativePnl = new Decimal(0);
@@ -244,17 +262,19 @@ export function calculateAnalytics(
     totalUnrealizedPnl: hasUnrealized ? toString(totalUnrealizedPnl) : null,
 
     winRateOverall,
-    avgWinPnlOverall,
-    avgLossPnlOverall,
+    averageWinPnl: avgWinPnlOverall,
+    averageLossPnl: avgLossPnlOverall,
     largestWinPnl: largestWinPnl ? toString(largestWinPnl) : null,
     largestLossPnl: largestLossPnl ? toString(largestLossPnl) : null,
     longestWinStreak,
-    longestLossStreak,
+    longestLoseStreak: longestLossStreak,
     numberOfWinningTrades,
     numberOfLosingTrades,
     numberOfBreakEvenTrades,
     totalFullyClosedTrades,
     avgRMultiple,
+    profitFactor,
+    expectancy,
 
     equityCurve,
     pnlPerTradeSeries,

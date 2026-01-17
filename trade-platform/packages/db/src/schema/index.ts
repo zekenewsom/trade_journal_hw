@@ -5,4 +5,5 @@ export * from "./transactions";
 export * from "./emotions";
 export * from "./strategies";
 export * from "./import-sources";
+export * from "./import-jobs";
 export * from "./audit-logs";

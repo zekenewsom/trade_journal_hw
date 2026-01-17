@@ -23,7 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { api } from "@/trpc/react";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type SortField = "openDatetime" | "ticker" | "realizedPnl" | "status";
@@ -70,7 +70,7 @@ export default function TradesPage() {
       case "ticker":
         return multiplier * a.instrumentTicker.localeCompare(b.instrumentTicker);
       case "realizedPnl":
-        return multiplier * ((a.realizedPnl || 0) - (b.realizedPnl || 0));
+        return multiplier * ((parseFloat(a.realizedPnl as string) || 0) - (parseFloat(b.realizedPnl as string) || 0));
       case "status":
         return multiplier * a.status.localeCompare(b.status);
       default:
@@ -244,7 +244,7 @@ export default function TradesPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-mono">
-                        {trade.currentOpenQuantity?.toFixed(4) || "-"}
+                        {formatNumber(trade.currentOpenQuantity, { maximumFractionDigits: 4 })}
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {trade.averageOpenPrice
@@ -256,9 +256,9 @@ export default function TradesPage() {
                           <span
                             className={cn(
                               "font-mono font-medium",
-                              trade.realizedPnl > 0
+                              parseFloat(trade.realizedPnl as string) > 0
                                 ? "text-green-500"
-                                : trade.realizedPnl < 0
+                                : parseFloat(trade.realizedPnl as string) < 0
                                 ? "text-red-500"
                                 : ""
                             )}
@@ -269,9 +269,9 @@ export default function TradesPage() {
                           <span
                             className={cn(
                               "font-mono text-muted-foreground",
-                              trade.unrealizedPnl > 0
+                              parseFloat(trade.unrealizedPnl as string) > 0
                                 ? "text-green-500/70"
-                                : trade.unrealizedPnl < 0
+                                : parseFloat(trade.unrealizedPnl as string) < 0
                                 ? "text-red-500/70"
                                 : ""
                             )}

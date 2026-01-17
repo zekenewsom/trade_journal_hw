@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { eq, desc, and } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { trades, transactions, tradeEmotions } from "@trade-platform/db/schema";
+import { trades, transactions, tradeEmotions, users, organizations, orgMembers } from "@trade-platform/db/schema";
 import {
   updateTradeMetadataSchema,
   updateMarkPriceSchema,
@@ -10,15 +10,64 @@ import { calculateTradePnlFifo } from "@trade-platform/core/pnl";
 import { toDecimal, toString } from "@trade-platform/core/financial";
 import type { TradeData, TransactionData } from "@trade-platform/core";
 
+/**
+ * Helper to get user's organization ID
+ */
+async function getUserOrgId(db: any, externalUserId: string): Promise<string | null> {
+  // Find the user by external ID
+  const user = await db
+    .select()
+    .from(users)
+    .where(eq(users.externalId, externalUserId))
+    .limit(1);
+
+  if (user.length === 0) {
+    return null;
+  }
+
+  const userId = user[0].id;
+
+  // Check if user has an org via org_members
+  const membership = await db
+    .select({ orgId: orgMembers.orgId })
+    .from(orgMembers)
+    .where(eq(orgMembers.userId, userId))
+    .limit(1);
+
+  if (membership.length > 0) {
+    return membership[0].orgId;
+  }
+
+  // Check if user owns an org
+  const ownedOrg = await db
+    .select({ id: organizations.id })
+    .from(organizations)
+    .where(eq(organizations.ownerId, userId))
+    .limit(1);
+
+  if (ownedOrg.length > 0) {
+    return ownedOrg[0].id;
+  }
+
+  return null;
+}
+
 export const tradesRouter = createTRPCRouter({
   /**
    * Get all trades for the current user's organization
    */
   list: protectedProcedure.query(async ({ ctx }) => {
-    // For now, we'll return all trades. In production, filter by org_id
+    // Get user's organization
+    const orgId = await getUserOrgId(ctx.db, ctx.userId!);
+
+    if (!orgId) {
+      return []; // No org = no trades
+    }
+
     const allTrades = await ctx.db
       .select()
       .from(trades)
+      .where(eq(trades.orgId, orgId))
       .orderBy(desc(trades.openDatetime));
 
     // Fetch transactions for each trade and calculate P&L

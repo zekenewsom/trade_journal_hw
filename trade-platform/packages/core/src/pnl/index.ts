@@ -159,7 +159,7 @@ export function calculateTradePnlFifo(
   let rMultipleActual: string | null = null;
   if (
     trade.status === "closed" &&
-    trade.rMultipleInitialRisk !== null &&
+    trade.rMultipleInitialRisk != null &&
     !isZero(trade.rMultipleInitialRisk)
   ) {
     const finalNetPnl = subtract(realizedGrossPnl, toDecimal(trade.feesTotal));

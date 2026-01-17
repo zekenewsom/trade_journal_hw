@@ -1,10 +1,22 @@
-import { api } from "@/trpc/server";
+"use client";
+
+import { api } from "@/trpc/react";
 import { formatCurrency, formatRelativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
-export async function RecentTradesTable() {
-  const trades = await api.trades.list();
+export function RecentTradesTable() {
+  const { data: trades, isLoading } = api.trades.list.useQuery();
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="h-16 animate-pulse rounded-lg border bg-muted" />
+        ))}
+      </div>
+    );
+  }
 
   if (!trades || trades.length === 0) {
     return (

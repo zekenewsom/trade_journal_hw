@@ -1,10 +1,10 @@
 "use client";
 
 import { useUser } from "@auth0/nextjs-auth0/client";
-import { Settings, User, Bell, Shield } from "lucide-react";
+import Image from "next/image";
+import { User, Bell, Shield } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 export default function SettingsPage() {
   const { user } = useUser();
@@ -30,10 +30,12 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4">
               {user?.picture && (
-                <img
+                <Image
                   src={user.picture}
                   alt={user.name || "Profile"}
-                  className="h-16 w-16 rounded-full"
+                  width={64}
+                  height={64}
+                  className="rounded-full"
                 />
               )}
               <div>

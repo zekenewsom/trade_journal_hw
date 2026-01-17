@@ -8,7 +8,7 @@ import {
   List,
   Settings,
   Upload,
-  Wallet,
+  Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +17,7 @@ const navigation = [
   { name: "Trades", href: "/trades", icon: List },
   { name: "Analytics", href: "/analytics", icon: LineChart },
   { name: "Import", href: "/import", icon: Upload },
-  { name: "Integrations", href: "/integrations", icon: Wallet },
+  { name: "Integrations", href: "/integrations", icon: Link2 },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -28,9 +28,8 @@ export function Sidebar() {
     <div className="hidden w-64 flex-shrink-0 border-r bg-card lg:block">
       <div className="flex h-full flex-col">
         <div className="flex h-16 items-center border-b px-6">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <LineChart className="h-6 w-6 text-primary" />
-            <span className="text-lg font-semibold">HighWater</span>
+          <Link href="/dashboard" className="flex items-center">
+            <span className="text-xl font-bold tracking-tight">HighWater</span>
           </Link>
         </div>
 
