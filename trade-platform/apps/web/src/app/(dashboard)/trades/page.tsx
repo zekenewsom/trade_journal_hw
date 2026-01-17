@@ -36,18 +36,26 @@ export default function TradesPage() {
   const [sortField, setSortField] = useState<SortField>("openDatetime");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
-  const { data: trades, isLoading } = api.trades.list.useQuery({
-    status: statusFilter !== "all" ? statusFilter : undefined,
-    assetClass: assetClassFilter !== "all" ? assetClassFilter : undefined,
-  });
+  const { data: trades, isLoading } = api.trades.list.useQuery();
 
   const filteredTrades = trades?.filter((trade) => {
-    if (!search) return true;
-    const searchLower = search.toLowerCase();
-    return (
-      trade.instrumentTicker.toLowerCase().includes(searchLower) ||
-      trade.exchange?.toLowerCase().includes(searchLower)
-    );
+    // Filter by status
+    if (statusFilter !== "all" && trade.status !== statusFilter) {
+      return false;
+    }
+    // Filter by asset class
+    if (assetClassFilter !== "all" && trade.assetClass !== assetClassFilter) {
+      return false;
+    }
+    // Filter by search
+    if (search) {
+      const searchLower = search.toLowerCase();
+      return (
+        trade.instrumentTicker.toLowerCase().includes(searchLower) ||
+        trade.exchange?.toLowerCase().includes(searchLower)
+      );
+    }
+    return true;
   });
 
   const sortedTrades = filteredTrades?.sort((a, b) => {
@@ -125,11 +133,12 @@ export default function TradesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Assets</SelectItem>
-                  <SelectItem value="crypto">Crypto</SelectItem>
-                  <SelectItem value="stocks">Stocks</SelectItem>
+                  <SelectItem value="cryptocurrency">Crypto</SelectItem>
+                  <SelectItem value="stock">Stocks</SelectItem>
                   <SelectItem value="options">Options</SelectItem>
                   <SelectItem value="futures">Futures</SelectItem>
                   <SelectItem value="forex">Forex</SelectItem>
+                  <SelectItem value="prediction_market">Prediction</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -200,7 +209,7 @@ export default function TradesPage() {
                     <TableRow key={trade.id}>
                       <TableCell>
                         <Link
-                          href={\`/trades/\${trade.id}\`}
+                          href={`/trades/${trade.id}`}
                           className="font-medium hover:underline"
                         >
                           {trade.instrumentTicker}

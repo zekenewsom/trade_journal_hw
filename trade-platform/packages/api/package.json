@@ -15,6 +15,7 @@
     "@trade-platform/core": "workspace:*",
     "@trade-platform/db": "workspace:*",
     "@trpc/server": "^11.0.0-rc.680",
+    "drizzle-orm": "^0.38.3",
     "superjson": "^2.2.2",
     "zod": "^3.24.1"
   },

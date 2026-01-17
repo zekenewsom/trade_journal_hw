@@ -12,4 +12,17 @@ export default defineConfig({
   dbCredentials: {
     url: process.env.DATABASE_URL!,
   },
+  schemaFilter: ["public"],
+  tablesFilter: [
+    "users",
+    "organizations",
+    "org_members",
+    "trades",
+    "transactions",
+    "emotions",
+    "trade_emotions",
+    "strategies",
+    "import_sources",
+    "audit_logs",
+  ],
 });

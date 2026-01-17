@@ -4,7 +4,7 @@ export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background">
       <div className="mx-auto max-w-md space-y-6 text-center">
-        <h1 className="text-4xl font-bold tracking-tight">Trade Platform</h1>
+        <h1 className="text-4xl font-bold tracking-tight">HighWater</h1>
         <p className="text-muted-foreground">
           Institutional-grade trade analytics for serious traders
         </p>

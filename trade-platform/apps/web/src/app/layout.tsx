@@ -11,7 +11,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Trade Platform",
+  title: "HighWater",
   description: "Institutional-grade trade analytics platform",
 };
 

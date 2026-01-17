@@ -1,13 +1,24 @@
 import "server-only";
 import { appRouter, createCallerFactory, createTRPCContext } from "@trade-platform/api";
 import { getSession } from "@auth0/nextjs-auth0";
+import { cookies } from "next/headers";
 import { cache } from "react";
 
 const createContext = cache(async () => {
-  const session = await getSession();
-  return createTRPCContext({
-    userId: session?.user?.sub ?? null,
-  });
+  // Pre-await cookies for Next.js 15 compatibility
+  await cookies();
+
+  try {
+    const session = await getSession();
+    return createTRPCContext({
+      userId: session?.user?.sub ?? null,
+    });
+  } catch {
+    // Session not available, return null userId
+    return createTRPCContext({
+      userId: null,
+    });
+  }
 });
 
 const createCaller = createCallerFactory(appRouter);

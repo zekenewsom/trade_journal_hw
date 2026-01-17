@@ -30,7 +30,7 @@ export function Sidebar() {
         <div className="flex h-16 items-center border-b px-6">
           <Link href="/dashboard" className="flex items-center gap-2">
             <LineChart className="h-6 w-6 text-primary" />
-            <span className="text-lg font-semibold">Trade Platform</span>
+            <span className="text-lg font-semibold">HighWater</span>
           </Link>
         </div>
 
@@ -58,7 +58,7 @@ export function Sidebar() {
         <div className="border-t p-4">
           <div className="rounded-lg bg-muted/50 p-4">
             <p className="text-xs text-muted-foreground">
-              Trade Platform v0.1.0
+              HighWater v0.1.0
             </p>
           </div>
         </div>

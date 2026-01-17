@@ -2,7 +2,7 @@ import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
-  clerkId: text("clerk_id").notNull().unique(),
+  externalId: text("external_id").notNull().unique(), // Auth0 user sub
   email: text("email").notNull(),
   firstName: text("first_name"),
   lastName: text("last_name"),
