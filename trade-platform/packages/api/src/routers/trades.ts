@@ -1,13 +1,13 @@
 import { z } from "zod";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { trades, transactions, tradeEmotions, users, organizations, orgMembers } from "@trade-platform/db/schema";
+import { trades, transactions, tradeEmotions, emotions, users, organizations, orgMembers } from "@trade-platform/db/schema";
 import {
   updateTradeMetadataSchema,
   updateMarkPriceSchema,
 } from "@trade-platform/core/validation";
 import { calculateTradePnlFifo, shouldCloseTrade } from "@trade-platform/core/pnl";
-import { toDecimal, toString, add } from "@trade-platform/core/financial";
+import { toDecimal, toString, add, subtract, multiply, divide, greaterThan } from "@trade-platform/core/financial";
 import type { TradeData, TransactionData } from "@trade-platform/core";
 
 /**
@@ -194,10 +194,20 @@ export const tradesRouter = createTRPCRouter({
         .where(eq(transactions.tradeId, tradeId))
         .orderBy(transactions.datetime);
 
-      const emotions = await ctx.db
+      const tradeEmotionRecords = await ctx.db
         .select()
         .from(tradeEmotions)
         .where(eq(tradeEmotions.tradeId, tradeId));
+
+      // Fetch emotion names if there are any emotion IDs
+      const emotionIds = tradeEmotionRecords.map((e) => e.emotionId);
+      let emotionNames: { id: string; name: string }[] = [];
+      if (emotionIds.length > 0) {
+        emotionNames = await ctx.db
+          .select({ id: emotions.id, name: emotions.name })
+          .from(emotions)
+          .where(inArray(emotions.id, emotionIds));
+      }
 
       // Calculate P&L
       const txData: TransactionData[] = tradeTransactions.map((tx) => ({
@@ -230,7 +240,8 @@ export const tradesRouter = createTRPCRouter({
       return {
         ...tradeData,
         transactions: tradeTransactions,
-        emotionIds: emotions.map((e) => e.emotionId),
+        emotionIds,
+        emotions: emotionNames,
         pnl,
       };
     }),
@@ -241,15 +252,111 @@ export const tradesRouter = createTRPCRouter({
   updateMetadata: protectedProcedure
     .input(updateTradeMetadataSchema)
     .mutation(async ({ ctx, input }) => {
-      const { tradeId, emotionIds, ...metadata } = input;
+      const { tradeId, emotionIds, decisionPrice, ...metadata } = input;
+
+      // Fetch the trade and transactions to calculate derived metrics
+      const trade = await ctx.db
+        .select()
+        .from(trades)
+        .where(eq(trades.id, tradeId))
+        .limit(1);
+
+      if (trade.length === 0) {
+        throw new Error("Trade not found");
+      }
+
+      const tradeData = trade[0]!;
+      const tradeTransactions = await ctx.db
+        .select()
+        .from(transactions)
+        .where(eq(transactions.tradeId, tradeId))
+        .orderBy(transactions.datetime);
+
+      // Calculate implementation shortfall if decision price is provided
+      let implementationShortfall: string | null = null;
+      if (decisionPrice) {
+        // Get the first transaction price (execution price)
+        if (tradeTransactions.length > 0) {
+          const firstTx = tradeTransactions[0]!;
+          const decPrice = toDecimal(decisionPrice);
+          const execPrice = toDecimal(firstTx.price);
+          // Implementation shortfall = (exec price - decision price) / decision price
+          // For longs: positive means you paid more than intended
+          // For shorts: negative means you got less than intended
+          if (tradeData.tradeDirection === "long") {
+            implementationShortfall = toString(
+              divide(subtract(execPrice, decPrice), decPrice)
+            );
+          } else {
+            // For shorts, we want to sell high, so shortfall is (decision - exec) / decision
+            implementationShortfall = toString(
+              divide(subtract(decPrice, execPrice), decPrice)
+            );
+          }
+        }
+      }
+
+      // Calculate maxCapitalUsed and returnOnAllocatedCapital for closed trades
+      let maxCapitalUsed: string | null = null;
+      let returnOnAllocatedCapital: string | null = null;
+
+      if (tradeTransactions.length > 0) {
+        // Calculate max capital used (peak position value)
+        let runningPosition = toDecimal(0);
+        let maxPositionValue = toDecimal(0);
+
+        for (const tx of tradeTransactions) {
+          const qty = toDecimal(tx.quantity);
+          const price = toDecimal(tx.price);
+
+          if (
+            (tradeData.tradeDirection === "long" && tx.action === "buy") ||
+            (tradeData.tradeDirection === "short" && tx.action === "sell")
+          ) {
+            runningPosition = add(runningPosition, qty);
+          } else {
+            runningPosition = subtract(runningPosition, qty);
+          }
+
+          // Track peak position value
+          const positionValue = multiply(runningPosition.abs(), price);
+          if (greaterThan(positionValue, maxPositionValue)) {
+            maxPositionValue = positionValue;
+          }
+        }
+
+        maxCapitalUsed = toString(maxPositionValue);
+
+        // Calculate return on allocated capital if trade has realized P&L
+        if (tradeData.realizedPnl && greaterThan(maxPositionValue, 0)) {
+          const realizedPnl = toDecimal(tradeData.realizedPnl);
+          returnOnAllocatedCapital = toString(divide(realizedPnl, maxPositionValue));
+        }
+      }
+
+      // Build update object
+      const updateData: Record<string, unknown> = {
+        ...metadata,
+        updatedAt: new Date(),
+      };
+
+      if (decisionPrice !== undefined) {
+        updateData.decisionPrice = decisionPrice;
+      }
+      if (implementationShortfall !== null) {
+        updateData.implementationShortfall = implementationShortfall;
+      }
+      if (maxCapitalUsed !== null) {
+        updateData.maxCapitalUsed = maxCapitalUsed;
+      }
+      if (returnOnAllocatedCapital !== null) {
+        updateData.returnOnAllocatedCapital = returnOnAllocatedCapital;
+      }
 
       // Update trade metadata
       await ctx.db
         .update(trades)
-        .set({
-          ...metadata,
-          updatedAt: new Date(),
-        })
+        .set(updateData)
         .where(eq(trades.id, tradeId));
 
       // Update emotions if provided

@@ -1,11 +1,11 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter, createTRPCContext } from "@trade-platform/api";
-import { getSession } from "@auth0/nextjs-auth0";
+import { auth0 } from "@/lib/auth0";
 
 const handler = async (req: Request) => {
   let userId: string | null = null;
   try {
-    const session = await getSession();
+    const session = await auth0.getSession();
     userId = session?.user?.sub ?? null;
   } catch {
     // Session not available

@@ -67,7 +67,14 @@ export const tradeDirectionSchema = z.enum(["long", "short"]);
 
 export const tradeStatusSchema = z.enum(["open", "closed"]);
 
+export const tradeOutcomeSchema = z.enum(["win", "loss", "break_even"]);
+
 export const transactionActionSchema = z.enum(["buy", "sell"]);
+
+// Institutional-grade trade review schemas
+export const thesisValidationSchema = z.enum(["correct", "partial", "incorrect"]);
+export const planAdherenceSchema = z.enum(["high", "medium", "low"]);
+export const overallRatingSchema = z.number().int().min(1).max(5);
 
 // Transaction schemas
 export const logTransactionSchema = z.object({
@@ -115,6 +122,18 @@ export const updateTradeMetadataSchema = z.object({
   lessonsLearned: z.string().max(5000).nullable().optional(),
   rMultipleInitialRisk: nonNegativeFinancialNumberSchema.nullable().optional(),
   emotionIds: z.array(uuidSchema).optional().default([]),
+
+  // Institutional-grade trade review fields
+  thesisValidation: thesisValidationSchema.nullable().optional(),
+  planAdherence: planAdherenceSchema.nullable().optional(),
+  planAdherenceNotes: z.string().max(2000).nullable().optional(),
+  unforeseenEvents: z.string().max(5000).nullable().optional(),
+  overallRating: overallRatingSchema.nullable().optional(),
+  outcomeOverride: tradeOutcomeSchema.nullable().optional(),
+  keyLesson1: z.string().max(500).nullable().optional(),
+  keyLesson2: z.string().max(500).nullable().optional(),
+  keyLesson3: z.string().max(500).nullable().optional(),
+  decisionPrice: nonNegativeFinancialNumberSchema.nullable().optional(),
 });
 
 export const updateMarkPriceSchema = z.object({

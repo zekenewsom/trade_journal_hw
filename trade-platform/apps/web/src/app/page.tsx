@@ -10,7 +10,7 @@ export default function HomePage() {
         </p>
         <div className="flex justify-center gap-4">
           <Link
-            href="/api/auth/login"
+            href="/auth/login"
             className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Sign In

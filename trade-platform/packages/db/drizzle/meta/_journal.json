@@ -15,6 +15,13 @@
       "when": 1768680320924,
       "tag": "0001_perpetual_mentor",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1768705979269,
+      "tag": "0002_red_aaron_stack",
+      "breakpoints": true
     }
   ]
 }

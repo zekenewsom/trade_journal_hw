@@ -2,13 +2,14 @@
     "name": "trade_journal_monorepo",
     "private": true,
     "scripts": {
-      "dev": "pnpm --filter electron-app start:dev & pnpm --filter react-app dev",
-      "start-electron": "pnpm --filter electron-app start",
-      "start-react": "pnpm --filter react-app dev",
-      "build-react": "pnpm --filter react-app build"
+        "dev": "pnpm --filter electron-app start:dev & pnpm --filter react-app dev",
+        "start-electron": "pnpm --filter electron-app start",
+        "start-react": "pnpm --filter react-app dev",
+        "build-react": "pnpm --filter react-app build"
     },
     "devDependencies": {
-      "concurrently": "^8.2.2", 
-      "nodemon": "^3.1.0"
-    }
-  }
+        "concurrently": "^8.2.2",
+        "nodemon": "^3.1.0"
+    },
+    "packageManager": "pnpm@10.15.1+sha512.34e538c329b5553014ca8e8f4535997f96180a1d0f614339357449935350d924e22f8614682191264ec33d1462ac21561aff97f6bb18065351c162c7e8f6de67"
+}

@@ -47,7 +47,7 @@ export function Header() {
               <User className="h-4 w-4" />
             </div>
           )}
-          <Link href="/api/auth/logout">
+          <Link href="/auth/logout">
             <Button variant="ghost" size="icon" title="Sign out">
               <LogOut className="h-4 w-4" />
             </Button>

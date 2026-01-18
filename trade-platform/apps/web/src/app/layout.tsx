@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { UserProvider } from "@auth0/nextjs-auth0/client";
+import { Auth0Provider } from "@auth0/nextjs-auth0/client";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="dark">
       <body className={`${inter.variable} font-sans antialiased bg-background text-foreground min-h-screen`}>
-        <UserProvider>
+        <Auth0Provider>
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"
@@ -35,7 +35,7 @@ export default function RootLayout({
               <Toaster />
             </TRPCProvider>
           </ThemeProvider>
-        </UserProvider>
+        </Auth0Provider>
       </body>
     </html>
   );

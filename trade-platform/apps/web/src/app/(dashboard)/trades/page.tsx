@@ -247,12 +247,12 @@ export default function TradesPage() {
                       <TableCell className="text-right font-mono">
                         {formatNumber(trade.currentOpenQuantity, { maximumFractionDigits: 4 })}
                       </TableCell>
-                      <TableCell className="text-right font-mono text-green-500">
+                      <TableCell className="text-right font-mono">
                         {trade.avgBuyPrice
                           ? formatCurrency(trade.avgBuyPrice)
                           : "-"}
                       </TableCell>
-                      <TableCell className="text-right font-mono text-red-500">
+                      <TableCell className="text-right font-mono">
                         {trade.avgSellPrice
                           ? formatCurrency(trade.avgSellPrice)
                           : "-"}

@@ -26,6 +26,10 @@ export const tradeDirectionEnum = pgEnum("trade_direction", ["long", "short"]);
 export const tradeStatusEnum = pgEnum("trade_status", ["open", "closed"]);
 export const tradeOutcomeEnum = pgEnum("trade_outcome", ["win", "loss", "break_even"]);
 
+// New enums for institutional-grade trade review
+export const thesisValidationEnum = pgEnum("thesis_validation", ["correct", "partial", "incorrect"]);
+export const planAdherenceEnum = pgEnum("plan_adherence", ["high", "medium", "low"]);
+
 export const trades = pgTable(
   "trades",
   {
@@ -74,6 +78,23 @@ export const trades = pgTable(
     }),
     rMultipleActual: numeric("r_multiple_actual", { precision: 20, scale: 8 }),
     durationMs: integer("duration_ms"),
+
+    // Institutional-grade trade review fields
+    thesisValidation: thesisValidationEnum("thesis_validation"),
+    planAdherence: planAdherenceEnum("plan_adherence"),
+    planAdherenceNotes: text("plan_adherence_notes"),
+    unforeseenEvents: text("unforeseen_events"),
+    overallRating: integer("overall_rating"), // 1-5 scale
+    outcomeOverride: tradeOutcomeEnum("outcome_override"), // allows trader to override system outcome
+    keyLesson1: text("key_lesson_1"),
+    keyLesson2: text("key_lesson_2"),
+    keyLesson3: text("key_lesson_3"),
+
+    // Quantitative metrics (system-calculated)
+    returnOnAllocatedCapital: numeric("return_on_allocated_capital", { precision: 20, scale: 8 }),
+    maxCapitalUsed: numeric("max_capital_used", { precision: 20, scale: 8 }),
+    decisionPrice: numeric("decision_price", { precision: 20, scale: 8 }), // user input for slippage calc
+    implementationShortfall: numeric("implementation_shortfall", { precision: 20, scale: 8 }),
 
     // Import tracking
     importSourceId: uuid("import_source_id").references(() => importSources.id),

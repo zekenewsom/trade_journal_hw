@@ -8,7 +8,6 @@ import {
   Target,
   Activity,
   BarChart3,
-  Percent,
   Clock,
   AlertTriangle,
   Award,

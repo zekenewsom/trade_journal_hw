@@ -131,7 +131,16 @@ export function calculateAnalytics(
   const pnlByExchange = new Map<string, GroupedPerformance>();
   const pnlByStrategy = new Map<string, GroupedPerformance>();
   const pnlByTradeDirection = new Map<string, GroupedPerformance>();
+  const pnlByThesisValidation = new Map<string, GroupedPerformance>();
+  const pnlByPlanAdherence = new Map<string, GroupedPerformance>();
   const dailyPnlMap = new Map<string, { pnl: Decimal; tradeCount: number }>();
+
+  // Qualitative metrics tracking
+  const thesisValidationDistribution = { correct: 0, partial: 0, incorrect: 0 };
+  const planAdherenceDistribution = { high: 0, medium: 0, low: 0 };
+  let sumOverallRating = 0;
+  let overallRatingCount = 0;
+  const ratingPnlPairs: Array<{ rating: number; pnl: number }> = [];
 
   // Process each trade
   for (const trade of tradesWithPnl) {
@@ -277,6 +286,27 @@ export function calculateAnalytics(
       updateGroupedData(pnlByExchange, trade.exchange, netPnl, pnl.outcome);
     }
     updateGroupedData(pnlByTradeDirection, trade.tradeDirection, netPnl, pnl.outcome);
+
+    // Track qualitative metrics
+    if (trade.thesisValidation) {
+      updateGroupedData(pnlByThesisValidation, trade.thesisValidation, netPnl, pnl.outcome);
+      if (trade.thesisValidation === "correct") thesisValidationDistribution.correct++;
+      else if (trade.thesisValidation === "partial") thesisValidationDistribution.partial++;
+      else if (trade.thesisValidation === "incorrect") thesisValidationDistribution.incorrect++;
+    }
+
+    if (trade.planAdherence) {
+      updateGroupedData(pnlByPlanAdherence, trade.planAdherence, netPnl, pnl.outcome);
+      if (trade.planAdherence === "high") planAdherenceDistribution.high++;
+      else if (trade.planAdherence === "medium") planAdherenceDistribution.medium++;
+      else if (trade.planAdherence === "low") planAdherenceDistribution.low++;
+    }
+
+    if (trade.overallRating != null) {
+      sumOverallRating += trade.overallRating;
+      overallRatingCount++;
+      ratingPnlPairs.push({ rating: trade.overallRating, pnl: netPnl.toNumber() });
+    }
   }
 
   // Final streak tracking
@@ -401,6 +431,8 @@ export function calculateAnalytics(
   const pnlByExchangeArray = Array.from(pnlByExchange.values());
   const pnlByStrategyArray = Array.from(pnlByStrategy.values());
   const pnlByTradeDirectionArray = Array.from(pnlByTradeDirection.values());
+  const pnlByThesisValidationArray = Array.from(pnlByThesisValidation.values());
+  const pnlByPlanAdherenceArray = Array.from(pnlByPlanAdherence.values());
 
   [
     ...pnlByMonthArray,
@@ -410,6 +442,8 @@ export function calculateAnalytics(
     ...pnlByExchangeArray,
     ...pnlByStrategyArray,
     ...pnlByTradeDirectionArray,
+    ...pnlByThesisValidationArray,
+    ...pnlByPlanAdherenceArray,
   ].forEach(calculateWinRate);
 
   // Sort grouped data by P&L
@@ -420,6 +454,32 @@ export function calculateAnalytics(
   pnlByExchangeArray.sort(sortByPnl);
   pnlByStrategyArray.sort(sortByPnl);
   pnlByTradeDirectionArray.sort(sortByPnl);
+  pnlByThesisValidationArray.sort(sortByPnl);
+  pnlByPlanAdherenceArray.sort(sortByPnl);
+
+  // Calculate qualitative metrics
+  const averageOverallRating =
+    overallRatingCount > 0 ? sumOverallRating / overallRatingCount : null;
+
+  // Calculate Pearson correlation between rating and P&L
+  let ratingPnlCorrelation: number | null = null;
+  if (ratingPnlPairs.length >= 3) {
+    const n = ratingPnlPairs.length;
+    const sumX = ratingPnlPairs.reduce((sum, p) => sum + p.rating, 0);
+    const sumY = ratingPnlPairs.reduce((sum, p) => sum + p.pnl, 0);
+    const sumXY = ratingPnlPairs.reduce((sum, p) => sum + p.rating * p.pnl, 0);
+    const sumX2 = ratingPnlPairs.reduce((sum, p) => sum + p.rating * p.rating, 0);
+    const sumY2 = ratingPnlPairs.reduce((sum, p) => sum + p.pnl * p.pnl, 0);
+
+    const numerator = n * sumXY - sumX * sumY;
+    const denominator = Math.sqrt(
+      (n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY)
+    );
+
+    if (denominator > 0) {
+      ratingPnlCorrelation = numerator / denominator;
+    }
+  }
 
   // Find best/worst periods
   const pnlByMonthTimeData = pnlByMonthArray.map(toTimePerformance);
@@ -522,6 +582,14 @@ export function calculateAnalytics(
     pnlByStrategy: pnlByStrategyArray,
     pnlByEmotion: [], // To be implemented with emotion data
     pnlByTradeDirection: pnlByTradeDirectionArray,
+    pnlByThesisValidation: pnlByThesisValidationArray,
+    pnlByPlanAdherence: pnlByPlanAdherenceArray,
+
+    // Qualitative Metrics Aggregation
+    averageOverallRating,
+    thesisValidationDistribution,
+    planAdherenceDistribution,
+    ratingPnlCorrelation,
 
     // Drawdown Analysis
     maxDrawdownPercentage: drawdownAnalysis.maxDrawdownPercentage,

@@ -74,7 +74,7 @@ export default function SettingsPage() {
               Your authentication is managed through Auth0. Visit your Auth0 account to manage security settings.
             </p>
             <Button variant="outline" asChild>
-              <a href="/api/auth/logout">Sign Out</a>
+              <a href="/auth/logout">Sign Out</a>
             </Button>
           </CardContent>
         </Card>

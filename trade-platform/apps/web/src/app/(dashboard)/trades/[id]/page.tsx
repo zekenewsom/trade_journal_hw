@@ -5,8 +5,9 @@ import { api } from "@/trpc/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatDuration, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { TradeReviewForm } from "@/components/trade/trade-review-form";
 
 interface TradePageProps {
   params: Promise<{ id: string }>;
@@ -197,6 +198,311 @@ export default async function TradePage({ params }: TradePageProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Trade Context Card */}
+      {(trade.marketConditions || trade.setupDescription || trade.reasoning) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Trade Context</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="space-y-4">
+              {trade.marketConditions && (
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground mb-1">
+                    Market Conditions
+                  </dt>
+                  <dd className="text-sm">{trade.marketConditions}</dd>
+                </div>
+              )}
+              {trade.setupDescription && (
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground mb-1">
+                    Setup Description
+                  </dt>
+                  <dd className="text-sm">{trade.setupDescription}</dd>
+                </div>
+              )}
+              {trade.reasoning && (
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground mb-1">
+                    Initial Thesis
+                  </dt>
+                  <dd className="text-sm">{trade.reasoning}</dd>
+                </div>
+              )}
+            </dl>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Notes & Lessons Card */}
+      {(trade.lessonsLearned || (trade.emotions && trade.emotions.length > 0)) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Notes & Lessons</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="space-y-4">
+              {trade.emotions && trade.emotions.length > 0 && (
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground mb-2">
+                    Emotions
+                  </dt>
+                  <dd className="flex flex-wrap gap-2">
+                    {trade.emotions.map((emotion) => (
+                      <Badge key={emotion.id} variant="outline">
+                        {emotion.name}
+                      </Badge>
+                    ))}
+                  </dd>
+                </div>
+              )}
+              {trade.lessonsLearned && (
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground mb-1">
+                    Lessons Learned
+                  </dt>
+                  <dd className="text-sm">{trade.lessonsLearned}</dd>
+                </div>
+              )}
+            </dl>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Trade Metrics Card */}
+      {(trade.pnl?.durationMs || trade.rMultipleInitialRisk || trade.rMultipleActual) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Trade Metrics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="space-y-3">
+              {trade.pnl?.durationMs && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Duration</dt>
+                  <dd className="font-medium">
+                    {formatDuration(trade.pnl.durationMs)}
+                  </dd>
+                </div>
+              )}
+              {trade.rMultipleInitialRisk && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Initial Risk (R)</dt>
+                  <dd className="font-mono font-medium">
+                    {formatCurrency(Number(trade.rMultipleInitialRisk))}
+                  </dd>
+                </div>
+              )}
+              {trade.rMultipleActual && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Actual R-Multiple</dt>
+                  <dd
+                    className={cn(
+                      "font-mono font-medium",
+                      Number(trade.rMultipleActual) >= 0
+                        ? "text-green-500"
+                        : "text-red-500"
+                    )}
+                  >
+                    {Number(trade.rMultipleActual).toFixed(2)}R
+                  </dd>
+                </div>
+              )}
+            </dl>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Advanced Metrics Card */}
+      {(trade.returnOnAllocatedCapital || trade.maxCapitalUsed || trade.implementationShortfall) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Advanced Metrics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="space-y-3">
+              {trade.maxCapitalUsed && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Max Capital Used</dt>
+                  <dd className="font-mono font-medium">
+                    {formatCurrency(Number(trade.maxCapitalUsed))}
+                  </dd>
+                </div>
+              )}
+              {trade.returnOnAllocatedCapital && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Return on Allocated Capital</dt>
+                  <dd
+                    className={cn(
+                      "font-mono font-medium",
+                      Number(trade.returnOnAllocatedCapital) >= 0
+                        ? "text-green-500"
+                        : "text-red-500"
+                    )}
+                  >
+                    {formatPercent(Number(trade.returnOnAllocatedCapital))}
+                  </dd>
+                </div>
+              )}
+              {trade.decisionPrice && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Decision Price</dt>
+                  <dd className="font-mono font-medium">
+                    {formatCurrency(Number(trade.decisionPrice))}
+                  </dd>
+                </div>
+              )}
+              {trade.implementationShortfall && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Implementation Shortfall</dt>
+                  <dd
+                    className={cn(
+                      "font-mono font-medium",
+                      Number(trade.implementationShortfall) <= 0
+                        ? "text-green-500"
+                        : "text-red-500"
+                    )}
+                  >
+                    {formatPercent(Number(trade.implementationShortfall))}
+                  </dd>
+                </div>
+              )}
+            </dl>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Key Lessons Card (from review) */}
+      {(trade.keyLesson1 || trade.keyLesson2 || trade.keyLesson3) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Key Lessons</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {trade.keyLesson1 && (
+                <li className="flex gap-2">
+                  <span className="text-muted-foreground">1.</span>
+                  <span className="text-sm">{trade.keyLesson1}</span>
+                </li>
+              )}
+              {trade.keyLesson2 && (
+                <li className="flex gap-2">
+                  <span className="text-muted-foreground">2.</span>
+                  <span className="text-sm">{trade.keyLesson2}</span>
+                </li>
+              )}
+              {trade.keyLesson3 && (
+                <li className="flex gap-2">
+                  <span className="text-muted-foreground">3.</span>
+                  <span className="text-sm">{trade.keyLesson3}</span>
+                </li>
+              )}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Trade Review Summary (read-only display if review exists) */}
+      {(trade.thesisValidation || trade.planAdherence || trade.overallRating) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Trade Review Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="space-y-3">
+              {trade.overallRating && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Overall Rating</dt>
+                  <dd className="font-medium">{trade.overallRating}/5</dd>
+                </div>
+              )}
+              {trade.thesisValidation && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Thesis Validation</dt>
+                  <dd>
+                    <Badge
+                      variant={
+                        trade.thesisValidation === "correct"
+                          ? "success"
+                          : trade.thesisValidation === "incorrect"
+                          ? "destructive"
+                          : "secondary"
+                      }
+                    >
+                      {trade.thesisValidation === "correct"
+                        ? "Correct"
+                        : trade.thesisValidation === "incorrect"
+                        ? "Incorrect"
+                        : "Partial"}
+                    </Badge>
+                  </dd>
+                </div>
+              )}
+              {trade.planAdherence && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Plan Adherence</dt>
+                  <dd>
+                    <Badge
+                      variant={
+                        trade.planAdherence === "high"
+                          ? "success"
+                          : trade.planAdherence === "low"
+                          ? "destructive"
+                          : "secondary"
+                      }
+                    >
+                      {trade.planAdherence.charAt(0).toUpperCase() + trade.planAdherence.slice(1)}
+                    </Badge>
+                  </dd>
+                </div>
+              )}
+              {trade.outcomeOverride && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Outcome Override</dt>
+                  <dd>
+                    <Badge variant="outline">
+                      {trade.outcomeOverride === "win"
+                        ? "Win"
+                        : trade.outcomeOverride === "loss"
+                        ? "Loss"
+                        : "Break Even"}
+                    </Badge>
+                  </dd>
+                </div>
+              )}
+              {trade.unforeseenEvents && (
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground mb-1">
+                    Unforeseen Events
+                  </dt>
+                  <dd className="text-sm">{trade.unforeseenEvents}</dd>
+                </div>
+              )}
+            </dl>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Trade Review Form (editable) */}
+      <TradeReviewForm
+        tradeId={trade.id}
+        initialData={{
+          thesisValidation: trade.thesisValidation,
+          planAdherence: trade.planAdherence,
+          planAdherenceNotes: trade.planAdherenceNotes,
+          unforeseenEvents: trade.unforeseenEvents,
+          overallRating: trade.overallRating,
+          outcomeOverride: trade.outcomeOverride,
+          keyLesson1: trade.keyLesson1,
+          keyLesson2: trade.keyLesson2,
+          keyLesson3: trade.keyLesson3,
+          decisionPrice: trade.decisionPrice,
+          systemOutcome: trade.pnl?.outcome,
+        }}
+      />
 
       {trade.transactions && trade.transactions.length > 0 && (
         <Card>

@@ -10,6 +10,10 @@ export type AssetClass =
   | "options"
   | "prediction_market";
 
+// Institutional-grade trade review types
+export type ThesisValidation = "correct" | "partial" | "incorrect";
+export type PlanAdherence = "high" | "medium" | "low";
+
 export interface TransactionData {
   id: string;
   tradeId: string;
@@ -38,6 +42,23 @@ export interface TradeData {
   currentMarketPrice?: string | null;
   rMultipleInitialRisk?: string | null;
   transactions?: TransactionData[];
+
+  // Institutional-grade qualitative fields
+  thesisValidation?: ThesisValidation | null;
+  planAdherence?: PlanAdherence | null;
+  planAdherenceNotes?: string | null;
+  unforeseenEvents?: string | null;
+  overallRating?: number | null;
+  outcomeOverride?: TradeOutcome | null;
+  keyLesson1?: string | null;
+  keyLesson2?: string | null;
+  keyLesson3?: string | null;
+
+  // Quantitative metrics
+  returnOnAllocatedCapital?: string | null;
+  maxCapitalUsed?: string | null;
+  decisionPrice?: string | null;
+  implementationShortfall?: string | null;
 }
 
 export interface PnlCalculationResult {
@@ -186,6 +207,22 @@ export interface AnalyticsData {
   pnlByStrategy: GroupedPerformance[];
   pnlByEmotion: GroupedPerformance[];
   pnlByTradeDirection: GroupedPerformance[];
+  pnlByThesisValidation: GroupedPerformance[];
+  pnlByPlanAdherence: GroupedPerformance[];
+
+  // Qualitative Metrics Aggregation
+  averageOverallRating: number | null;
+  thesisValidationDistribution: {
+    correct: number;
+    partial: number;
+    incorrect: number;
+  };
+  planAdherenceDistribution: {
+    high: number;
+    medium: number;
+    low: number;
+  };
+  ratingPnlCorrelation: number | null;
 
   // Drawdown Analysis
   maxDrawdownPercentage: string | null;

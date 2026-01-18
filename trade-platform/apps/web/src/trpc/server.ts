@@ -1,15 +1,11 @@
 import "server-only";
 import { appRouter, createCallerFactory, createTRPCContext } from "@trade-platform/api";
-import { getSession } from "@auth0/nextjs-auth0";
-import { cookies } from "next/headers";
+import { auth0 } from "@/lib/auth0";
 import { cache } from "react";
 
 const createContext = cache(async () => {
-  // Pre-await cookies for Next.js 15 compatibility
-  await cookies();
-
   try {
-    const session = await getSession();
+    const session = await auth0.getSession();
     return createTRPCContext({
       userId: session?.user?.sub ?? null,
     });
