@@ -269,37 +269,60 @@ trade-platform/
 
 ---
 
+## TODO / Future Features
+
+The following features are planned for future development:
+
+- [ ] **Unrealized P&L**: Real-time mark-to-market P&L for open positions (requires price feed integration for each asset class)
+- [ ] **Price Feeds**: Integrate live price data from exchanges/APIs for:
+  - Cryptocurrency (CoinGecko, Binance API)
+  - Stocks (Alpha Vantage, Polygon.io)
+  - Futures (CME, exchange APIs)
+- [ ] **P&L Heatmap Calendar**: Visual calendar showing daily/weekly P&L performance
+- [ ] **Trade Notes & Journaling**: Enhanced notes with markdown support, screenshots, trade setup documentation
+- [ ] **Strategy Backtesting**: Compare actual vs. expected performance
+- [ ] **Risk Alerts**: Notifications for drawdown thresholds, position size limits
+- [ ] **Export Reports**: PDF/Excel export of performance reports
+
+---
+
 ## Implementation Roadmap
 
-### Phase 1: Foundation (Weeks 1-4) - Complete
+### Phase 1: Foundation - Complete
 - [x] Monorepo setup (Turborepo, pnpm)
 - [x] Next.js 14 with App Router
 - [x] Supabase PostgreSQL with Drizzle ORM
 - [x] Auth0 authentication
 - [x] tRPC API
-- [x] FIFO P&L calculator
+- [x] FIFO P&L calculator with Decimal.js precision
 - [x] Manual trade entry
 - [x] Trade list and detail views
-- [x] Dark theme
+- [x] Dark theme (GitHub-inspired)
+- [x] Auto-calculation of average buy/sell prices
+- [x] Auto-fix trade status (open/closed) based on transactions
 
-### Phase 2: Import + DEX (Weeks 5-8)
+### Phase 2: Import + DEX - In Progress
+- [x] Hyperliquid DEX integration
+- [x] Analytics dashboard with institutional metrics
+- [x] Equity curve visualization
+- [x] Win rate, profit factor, expectancy calculations
+- [x] Performance breakdown by asset class, exchange, direction
+- [x] Sharpe ratio, Sortino ratio, Calmar ratio
+- [x] Drawdown analysis
+- [x] Trade duration metrics
 - [ ] Excel/CSV file upload
-- [ ] Provider-specific parsers
-- [ ] Duplicate detection
-- [ ] Hyperliquid integration
 - [ ] Polymarket integration
 - [ ] Kalshi integration
-- [ ] Analytics dashboard
+- [ ] Duplicate detection
 
-### Phase 3: CEX + Full Analytics (Weeks 9-12)
+### Phase 3: CEX + Full Analytics
 - [ ] Binance API integration
 - [ ] Coinbase OAuth integration
-- [ ] Full analytics suite (Sharpe, Sortino, VaR)
-- [ ] Performance grouping
+- [ ] VaR (Value at Risk) calculation
 - [ ] P&L heatmap calendar
-- [ ] Automated sync scheduling
+- [ ] Automated sync scheduling (Inngest)
 
-### Phase 4: Traditional Brokers (Weeks 13-16)
+### Phase 4: Traditional Brokers
 - [ ] E*Trade OAuth integration
 - [ ] Schwab OAuth integration
 - [ ] PWA support

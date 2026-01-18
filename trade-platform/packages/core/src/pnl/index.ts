@@ -239,11 +239,16 @@ export function calculateOpenPositionSize(
 
 /**
  * Determines if a trade should be marked as closed based on transactions.
+ * Uses a small tolerance to handle floating-point precision issues.
  */
 export function shouldCloseTrade(
   transactions: TransactionData[],
   tradeDirection: "long" | "short"
 ): boolean {
   const openSize = calculateOpenPositionSize(transactions, tradeDirection);
-  return openSize.lessThanOrEqualTo(0);
+  // Use a small tolerance (1e-8) to handle decimal precision issues
+  // This accounts for tiny residuals that are effectively zero
+  // Use absolute value to handle both positive tiny residuals and negative (oversold) cases
+  const PRECISION_TOLERANCE = new Decimal("0.00000001");
+  return openSize.abs().lessThanOrEqualTo(PRECISION_TOLERANCE);
 }

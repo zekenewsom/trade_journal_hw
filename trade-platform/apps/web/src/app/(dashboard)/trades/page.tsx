@@ -192,13 +192,14 @@ export default function TradesPage() {
                       </div>
                     </TableHead>
                     <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead className="text-right">Avg Price</TableHead>
+                    <TableHead className="text-right">Avg Buy</TableHead>
+                    <TableHead className="text-right">Avg Sell</TableHead>
                     <TableHead
                       className="cursor-pointer text-right"
                       onClick={() => toggleSort("realizedPnl")}
                     >
                       <div className="flex items-center justify-end gap-1">
-                        P&L
+                        Realized P&L
                         <ArrowUpDown className="h-4 w-4" />
                       </div>
                     </TableHead>
@@ -246,13 +247,18 @@ export default function TradesPage() {
                       <TableCell className="text-right font-mono">
                         {formatNumber(trade.currentOpenQuantity, { maximumFractionDigits: 4 })}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {trade.averageOpenPrice
-                          ? formatCurrency(trade.averageOpenPrice)
+                      <TableCell className="text-right font-mono text-green-500">
+                        {trade.avgBuyPrice
+                          ? formatCurrency(trade.avgBuyPrice)
+                          : "-"}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-red-500">
+                        {trade.avgSellPrice
+                          ? formatCurrency(trade.avgSellPrice)
                           : "-"}
                       </TableCell>
                       <TableCell className="text-right">
-                        {trade.status === "closed" && trade.realizedPnl != null ? (
+                        {trade.realizedPnl != null ? (
                           <span
                             className={cn(
                               "font-mono font-medium",
@@ -260,27 +266,13 @@ export default function TradesPage() {
                                 ? "text-green-500"
                                 : parseFloat(trade.realizedPnl as string) < 0
                                 ? "text-red-500"
-                                : ""
+                                : "text-muted-foreground"
                             )}
                           >
                             {formatCurrency(trade.realizedPnl)}
                           </span>
-                        ) : trade.unrealizedPnl != null ? (
-                          <span
-                            className={cn(
-                              "font-mono text-muted-foreground",
-                              parseFloat(trade.unrealizedPnl as string) > 0
-                                ? "text-green-500/70"
-                                : parseFloat(trade.unrealizedPnl as string) < 0
-                                ? "text-red-500/70"
-                                : ""
-                            )}
-                          >
-                            {formatCurrency(trade.unrealizedPnl)}
-                            <span className="ml-1 text-xs">(unreal.)</span>
-                          </span>
                         ) : (
-                          "-"
+                          <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
                     </TableRow>

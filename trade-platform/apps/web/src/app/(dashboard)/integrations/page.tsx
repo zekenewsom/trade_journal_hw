@@ -41,6 +41,8 @@ export default function IntegrationsPage() {
   const [previewTrades, setPreviewTrades] = useState<{ ticker: string; action: string; datetime: string; quantity: string; price: string }[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
 
   const { data: platforms } = api.integrations.getDexPlatforms.useQuery();
   const { data: connections, refetch: refetchConnections } = api.integrations.getConnections.useQuery();
@@ -120,6 +122,7 @@ export default function IntegrationsPage() {
   };
 
   const handleSync = async (connectionId: string) => {
+    setSyncingId(connectionId);
     try {
       const result = await syncConnection.mutateAsync({ connectionId });
 
@@ -138,7 +141,39 @@ export default function IntegrationsPage() {
         variant: "destructive",
       });
       refetchConnections();
+    } finally {
+      setSyncingId(null);
     }
+  };
+
+  const handleSyncAll = async () => {
+    if (!connections || connections.length === 0) return;
+
+    setIsSyncingAll(true);
+    let totalImported = 0;
+    let failedCount = 0;
+
+    for (const connection of connections) {
+      try {
+        const result = await syncConnection.mutateAsync({ connectionId: connection.id });
+        totalImported += result.imported;
+      } catch {
+        failedCount++;
+      }
+    }
+
+    toast({
+      title: "Sync all complete",
+      description: failedCount > 0
+        ? `Imported ${totalImported} transactions. ${failedCount} connection(s) failed.`
+        : totalImported > 0
+          ? `Imported ${totalImported} new transactions`
+          : "No new trades found",
+      variant: failedCount > 0 ? "destructive" : "default",
+    });
+
+    refetchConnections();
+    setIsSyncingAll(false);
   };
 
   const handleDisconnect = async (connectionId: string) => {
@@ -184,11 +219,23 @@ export default function IntegrationsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Integrations</h1>
-        <p className="text-muted-foreground">
-          Connect to exchanges and import your trade history
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Integrations</h1>
+          <p className="text-muted-foreground">
+            Connect to exchanges and import your trade history
+          </p>
+        </div>
+        {connections && connections.length > 0 && (
+          <Button
+            onClick={handleSyncAll}
+            disabled={isSyncingAll || syncingId !== null}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${isSyncingAll ? "animate-spin" : ""}`} />
+            {isSyncingAll ? "Syncing..." : "Sync All"}
+          </Button>
+        )}
       </div>
 
       {/* Connected Integrations */}
@@ -232,10 +279,10 @@ export default function IntegrationsPage() {
                         variant="ghost"
                         className="h-8 w-8"
                         onClick={() => handleSync(connection.id)}
-                        disabled={syncConnection.isPending}
+                        disabled={syncingId !== null || isSyncingAll}
                         title="Sync now"
                       >
-                        <RefreshCw className={`h-4 w-4 ${syncConnection.isPending ? "animate-spin" : ""}`} />
+                        <RefreshCw className={`h-4 w-4 ${syncingId === connection.id || isSyncingAll ? "animate-spin" : ""}`} />
                       </Button>
                       <Button
                         size="icon"

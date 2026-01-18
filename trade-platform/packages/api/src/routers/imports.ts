@@ -6,6 +6,9 @@ import { parseCSV, getAllProviders, detectProvider } from "@trade-platform/integ
 import type { ParsedTransaction, ImportProvider } from "@trade-platform/integrations";
 import { eq, and, sql, desc, inArray } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
+import { shouldCloseTrade } from "@trade-platform/core/pnl";
+import { add, toDecimal, toString } from "@trade-platform/core/financial";
+import type { TransactionData } from "@trade-platform/core";
 
 /**
  * Helper to get or create user's organization
@@ -408,6 +411,69 @@ export const importsRouter = createTRPCRouter({
           const batch = newTransactions.slice(i, i + BATCH_SIZE);
           await ctx.db.insert(transactions).values(batch);
         }
+      }
+
+      // Recalculate trade statuses after all transactions are inserted
+      // This fixes the bug where imported trades are never marked as closed
+      const affectedTradeIds = Array.from(new Set([
+        ...Array.from(existingTradeMap.values()),
+        ...newTrades.map(t => t.id),
+      ]));
+
+      for (const tradeId of affectedTradeIds) {
+        // Get the trade to determine direction
+        const trade = await ctx.db
+          .select()
+          .from(trades)
+          .where(eq(trades.id, tradeId))
+          .limit(1);
+
+        if (trade.length === 0) continue;
+
+        const currentTrade = trade[0]!;
+
+        // Get all transactions for this trade
+        const allTransactions = await ctx.db
+          .select()
+          .from(transactions)
+          .where(eq(transactions.tradeId, tradeId))
+          .orderBy(transactions.datetime);
+
+        if (allTransactions.length === 0) continue;
+
+        const txData: TransactionData[] = allTransactions.map((tx) => ({
+          id: tx.id,
+          tradeId: tx.tradeId,
+          action: tx.action,
+          quantity: tx.quantity,
+          price: tx.price,
+          datetime: tx.datetime,
+          fees: tx.fees || "0",
+          notes: tx.notes,
+        }));
+
+        // Calculate total fees
+        const totalFees = txData.reduce(
+          (sum, tx) => add(sum, tx.fees),
+          toDecimal(0)
+        );
+
+        // Determine if the trade should be closed
+        const isClosed = shouldCloseTrade(txData, currentTrade.tradeDirection);
+        const lastTxDatetime = allTransactions[allTransactions.length - 1]?.datetime;
+        const firstTxDatetime = allTransactions[0]?.datetime;
+
+        // Update trade status
+        await ctx.db
+          .update(trades)
+          .set({
+            status: isClosed ? "closed" : "open",
+            openDatetime: firstTxDatetime,
+            closeDatetime: isClosed ? lastTxDatetime : null,
+            feesTotal: toString(totalFees),
+            updatedAt: new Date(),
+          })
+          .where(eq(trades.id, tradeId));
       }
 
       return {

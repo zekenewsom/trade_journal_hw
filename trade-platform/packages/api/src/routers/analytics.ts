@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { trades, transactions, users, organizations, orgMembers } from "@trade-platform/db/schema";
 import { analyticsFiltersSchema } from "@trade-platform/core/validation";
@@ -60,7 +60,14 @@ export const analyticsRouter = createTRPCRouter({
 
       // Fetch trades for this org only
       const allTrades = await ctx.db.select().from(trades).where(eq(trades.orgId, orgId));
-      const allTransactions = await ctx.db.select().from(transactions);
+
+      // Get trade IDs for filtering transactions
+      const tradeIds = allTrades.map((t) => t.id);
+
+      // Fetch only transactions that belong to this org's trades
+      const allTransactions = tradeIds.length > 0
+        ? await ctx.db.select().from(transactions).where(inArray(transactions.tradeId, tradeIds))
+        : [];
 
       // Group transactions by trade
       const transactionsByTrade = new Map<string, TransactionData[]>();
@@ -114,37 +121,115 @@ export const analyticsRouter = createTRPCRouter({
 
     if (!orgId) {
       return {
-        totalRealizedPnl: "0",
+        // Core P&L Metrics
+        totalRealizedNetPnl: "0",
+        totalRealizedGrossPnl: "0",
+        totalFeesPaidOnClosedPortions: "0",
         totalUnrealizedPnl: "0",
         totalFees: "0",
-        winRate: 0,
+
+        // Win/Loss Metrics
+        winRateOverall: null,
         totalTrades: 0,
         closedTrades: 0,
         openTrades: 0,
-        winningTrades: 0,
-        losingTrades: 0,
-        breakEvenTrades: 0,
-        maxDrawdown: 0,
-        avgWin: "0",
-        avgLoss: "0",
-        largestWin: "0",
-        largestLoss: "0",
-        profitFactor: 0,
+        numberOfWinningTrades: 0,
+        numberOfLosingTrades: 0,
+        numberOfBreakEvenTrades: 0,
+
+        // Performance Metrics
+        averageWinPnl: "0",
+        averageLossPnl: "0",
+        largestWinPnl: "0",
+        largestLossPnl: "0",
+        smallestWinPnl: "0",
+        smallestLossPnl: "0",
+        medianPnl: "0",
+        standardDeviationPnl: "0",
+
+        // Risk-Adjusted Returns (Institutional)
+        sharpeRatio: null,
+        sortinoRatio: null,
+        calmarRatio: null,
+        recoveryFactor: null,
+        returnOnMaxDrawdown: null,
+
+        // Performance Ratios
+        profitFactor: null,
         expectancy: "0",
+        payoffRatio: null,
+        kellyCriterion: null,
+        avgRMultiple: null,
+
+        // Volatility Metrics
+        returnVolatility: null,
+        downsideDeviation: null,
+        ulcerIndex: null,
+
+        // Statistical Metrics
+        skewness: null,
+        kurtosis: null,
+
+        // Streak Metrics
         longestWinStreak: 0,
         longestLoseStreak: 0,
+        averageWinStreak: null,
+        averageLoseStreak: null,
+        currentStreak: 0,
+        currentStreakType: "none" as const,
+        maxConsecutiveWins: 0,
+        maxConsecutiveLosses: 0,
+
+        // Trade Duration Metrics
+        averageTradeDuration: null,
+        averageWinningTradeDuration: null,
+        averageLosingTradeDuration: null,
+        shortestTradeDuration: null,
+        longestTradeDuration: null,
+
+        // Drawdown Metrics
+        maxDrawdownPercentage: "0",
+        maxDrawdownDollar: "0",
+        averageDrawdown: "0",
+        maxDrawdownDuration: null,
+        currentDrawdown: "0",
+        drawdownPeriods: [],
+
+        // Time-Based Performance
+        bestTradingDay: null,
+        worstTradingDay: null,
+        bestTradingMonth: null,
+        worstTradingMonth: null,
+
+        // Charts
         equityCurve: [],
+        dailyReturns: [],
+        pnlPerTradeSeries: [],
+
+        // Grouped Performance
         pnlByAssetClass: [],
         pnlByExchange: [],
         pnlByMonth: [],
         pnlByDayOfWeek: [],
+        pnlByHourOfDay: [],
+        pnlByWeekOfYear: [],
+        pnlByTradeDirection: [],
+
+        // Recent Activity
         recentTrades: [],
       };
     }
 
     // Fetch trades for this org only
     const allTrades = await ctx.db.select().from(trades).where(eq(trades.orgId, orgId));
-    const allTransactions = await ctx.db.select().from(transactions);
+
+    // Get trade IDs for filtering transactions
+    const tradeIds = allTrades.map((t) => t.id);
+
+    // Fetch only transactions that belong to this org's trades
+    const allTransactions = tradeIds.length > 0
+      ? await ctx.db.select().from(transactions).where(inArray(transactions.tradeId, tradeIds))
+      : [];
 
     // Group transactions by trade
     const transactionsByTrade = new Map<string, TransactionData[]>();
@@ -200,39 +285,99 @@ export const analyticsRouter = createTRPCRouter({
       }));
 
     return {
-      // P&L Metrics
-      totalRealizedPnl: analytics.totalRealizedNetPnl,
+      // Core P&L Metrics
+      totalRealizedNetPnl: analytics.totalRealizedNetPnl,
+      totalRealizedGrossPnl: analytics.totalRealizedGrossPnl,
+      totalFeesPaidOnClosedPortions: analytics.totalFeesPaidOnClosedPortions,
       totalUnrealizedPnl: analytics.totalUnrealizedPnl || "0",
       totalFees: totalFees.toFixed(2),
 
       // Win/Loss Metrics
-      winRate: analytics.winRateOverall || 0,
+      winRateOverall: analytics.winRateOverall,
       totalTrades: allTrades.length,
       closedTrades: analytics.totalFullyClosedTrades,
       openTrades: allTrades.filter((t) => t.status === "open").length,
-      winningTrades: analytics.numberOfWinningTrades,
-      losingTrades: analytics.numberOfLosingTrades,
-      breakEvenTrades: analytics.numberOfBreakEvenTrades,
+      numberOfWinningTrades: analytics.numberOfWinningTrades,
+      numberOfLosingTrades: analytics.numberOfLosingTrades,
+      numberOfBreakEvenTrades: analytics.numberOfBreakEvenTrades,
 
       // Performance Metrics
-      avgWin: analytics.averageWinPnl || "0",
-      avgLoss: analytics.averageLossPnl || "0",
-      largestWin: analytics.largestWinPnl || "0",
-      largestLoss: analytics.largestLossPnl || "0",
-      profitFactor: analytics.profitFactor || 0,
-      expectancy: analytics.expectancy || "0",
+      averageWinPnl: analytics.averageWinPnl || "0",
+      averageLossPnl: analytics.averageLossPnl || "0",
+      largestWinPnl: analytics.largestWinPnl || "0",
+      largestLossPnl: analytics.largestLossPnl || "0",
+      smallestWinPnl: analytics.smallestWinPnl || "0",
+      smallestLossPnl: analytics.smallestLossPnl || "0",
+      medianPnl: analytics.medianPnl || "0",
+      standardDeviationPnl: analytics.standardDeviationPnl || "0",
 
-      // Risk Metrics
-      maxDrawdown: analytics.maxDrawdownPercentage || "0",
+      // Risk-Adjusted Returns (Institutional)
+      sharpeRatio: analytics.sharpeRatio,
+      sortinoRatio: analytics.sortinoRatio,
+      calmarRatio: analytics.calmarRatio,
+      recoveryFactor: analytics.recoveryFactor,
+      returnOnMaxDrawdown: analytics.returnOnMaxDrawdown,
+
+      // Performance Ratios
+      profitFactor: analytics.profitFactor,
+      expectancy: analytics.expectancy || "0",
+      payoffRatio: analytics.payoffRatio,
+      kellyCriterion: analytics.kellyCriterion,
+      avgRMultiple: analytics.avgRMultiple,
+
+      // Volatility Metrics
+      returnVolatility: analytics.returnVolatility,
+      downsideDeviation: analytics.downsideDeviation,
+      ulcerIndex: analytics.ulcerIndex,
+
+      // Statistical Metrics
+      skewness: analytics.skewness,
+      kurtosis: analytics.kurtosis,
+
+      // Streak Metrics
       longestWinStreak: analytics.longestWinStreak,
       longestLoseStreak: analytics.longestLoseStreak,
+      averageWinStreak: analytics.averageWinStreak,
+      averageLoseStreak: analytics.averageLoseStreak,
+      currentStreak: analytics.currentStreak,
+      currentStreakType: analytics.currentStreakType,
+      maxConsecutiveWins: analytics.maxConsecutiveWins,
+      maxConsecutiveLosses: analytics.maxConsecutiveLosses,
+
+      // Trade Duration Metrics
+      averageTradeDuration: analytics.averageTradeDuration,
+      averageWinningTradeDuration: analytics.averageWinningTradeDuration,
+      averageLosingTradeDuration: analytics.averageLosingTradeDuration,
+      shortestTradeDuration: analytics.shortestTradeDuration,
+      longestTradeDuration: analytics.longestTradeDuration,
+
+      // Drawdown Metrics
+      maxDrawdownPercentage: analytics.maxDrawdownPercentage || "0",
+      maxDrawdownDollar: analytics.maxDrawdownDollar || "0",
+      averageDrawdown: analytics.averageDrawdown || "0",
+      maxDrawdownDuration: analytics.maxDrawdownDuration,
+      currentDrawdown: analytics.currentDrawdown || "0",
+      drawdownPeriods: analytics.drawdownPeriods,
+
+      // Time-Based Performance
+      bestTradingDay: analytics.bestTradingDay,
+      worstTradingDay: analytics.worstTradingDay,
+      bestTradingMonth: analytics.bestTradingMonth,
+      worstTradingMonth: analytics.worstTradingMonth,
 
       // Charts
       equityCurve: analytics.equityCurve,
+      dailyReturns: analytics.dailyReturns,
+      pnlPerTradeSeries: analytics.pnlPerTradeSeries,
+
+      // Grouped Performance
       pnlByAssetClass: analytics.pnlByAssetClass,
       pnlByExchange: analytics.pnlByExchange,
       pnlByMonth: analytics.pnlByMonth,
       pnlByDayOfWeek: analytics.pnlByDayOfWeek,
+      pnlByHourOfDay: analytics.pnlByHourOfDay,
+      pnlByWeekOfYear: analytics.pnlByWeekOfYear,
+      pnlByTradeDirection: analytics.pnlByTradeDirection,
 
       // Recent Activity
       recentTrades: recentClosedTrades,

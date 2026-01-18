@@ -26,7 +26,7 @@ export function toDecimal(value: string | number | Decimal | null | undefined): 
   try {
     return new Decimal(value);
   } catch {
-    console.warn(`Invalid decimal value: ${value}, defaulting to 0`);
+    // Invalid decimal value, defaulting to 0
     return new Decimal(0);
   }
 }
@@ -78,7 +78,7 @@ export function divide(
   for (const denominator of denominators) {
     const d = toDecimal(denominator);
     if (d.isZero()) {
-      console.warn("Division by zero, returning 0");
+      // Division by zero, returning 0
       return new Decimal(0);
     }
     result = result.dividedBy(d);

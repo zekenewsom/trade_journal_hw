@@ -10,6 +10,9 @@ import {
 import { trades, transactions, users, organizations, orgMembers, importSources } from "@trade-platform/db/schema";
 import { eq, and } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
+import { shouldCloseTrade } from "@trade-platform/core/pnl";
+import { add, toDecimal, toString } from "@trade-platform/core/financial";
+import type { TransactionData } from "@trade-platform/core";
 
 /**
  * Helper to get or create user's organization
@@ -296,6 +299,62 @@ export const integrationsRouter = createTRPCRouter({
           const batch = newTransactions.slice(i, i + BATCH_SIZE);
           await ctx.db.insert(transactions).values(batch);
         }
+      }
+
+      // Recalculate trade statuses after all transactions are inserted
+      const affectedTradeIds = Array.from(new Set([
+        ...Array.from(existingTradeMap.values()),
+        ...newTrades.map(t => t.id),
+      ]));
+
+      for (const tradeId of affectedTradeIds) {
+        const trade = await ctx.db.select().from(trades).where(eq(trades.id, tradeId)).limit(1);
+        if (trade.length === 0) continue;
+        const currentTrade = trade[0]!;
+
+        const allTransactions = await ctx.db
+          .select()
+          .from(transactions)
+          .where(eq(transactions.tradeId, tradeId));
+
+        if (allTransactions.length === 0) continue;
+
+        // Convert to TransactionData format
+        const txData: TransactionData[] = allTransactions.map((tx) => ({
+          id: tx.id,
+          tradeId: tx.tradeId,
+          action: tx.action,
+          quantity: tx.quantity,
+          price: tx.price,
+          datetime: tx.datetime,
+          fees: tx.fees || "0",
+          notes: tx.notes,
+        }));
+
+        // Sort transactions by datetime
+        txData.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+
+        // Calculate total fees
+        const totalFees = txData.reduce((sum, tx) => add(sum, tx.fees), toDecimal(0));
+
+        // Check if trade should be closed
+        const isClosed = shouldCloseTrade(txData, currentTrade.tradeDirection);
+
+        // Get first and last transaction dates
+        const firstTxDatetime = txData[0]?.datetime;
+        const lastTxDatetime = txData[txData.length - 1]?.datetime;
+
+        // Update trade status and dates
+        await ctx.db
+          .update(trades)
+          .set({
+            status: isClosed ? "closed" : "open",
+            openDatetime: firstTxDatetime,
+            closeDatetime: isClosed ? lastTxDatetime : null,
+            feesTotal: toString(totalFees),
+            updatedAt: new Date(),
+          })
+          .where(eq(trades.id, tradeId));
       }
 
       // Update lastSyncAt on the import source
@@ -666,6 +725,62 @@ export const integrationsRouter = createTRPCRouter({
             const batch = newTransactions.slice(i, i + BATCH_SIZE);
             await ctx.db.insert(transactions).values(batch);
           }
+        }
+
+        // Recalculate trade statuses after all transactions are inserted
+        const affectedTradeIds = Array.from(new Set([
+          ...Array.from(existingTradeMap.values()),
+          ...newTrades.map(t => t.id),
+        ]));
+
+        for (const tradeId of affectedTradeIds) {
+          const trade = await ctx.db.select().from(trades).where(eq(trades.id, tradeId)).limit(1);
+          if (trade.length === 0) continue;
+          const currentTrade = trade[0]!;
+
+          const allTransactions = await ctx.db
+            .select()
+            .from(transactions)
+            .where(eq(transactions.tradeId, tradeId));
+
+          if (allTransactions.length === 0) continue;
+
+          // Convert to TransactionData format
+          const txData: TransactionData[] = allTransactions.map((tx) => ({
+            id: tx.id,
+            tradeId: tx.tradeId,
+            action: tx.action,
+            quantity: tx.quantity,
+            price: tx.price,
+            datetime: tx.datetime,
+            fees: tx.fees || "0",
+            notes: tx.notes,
+          }));
+
+          // Sort transactions by datetime
+          txData.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+
+          // Calculate total fees
+          const totalFees = txData.reduce((sum, tx) => add(sum, tx.fees), toDecimal(0));
+
+          // Check if trade should be closed
+          const isClosed = shouldCloseTrade(txData, currentTrade.tradeDirection);
+
+          // Get first and last transaction dates
+          const firstTxDatetime = txData[0]?.datetime;
+          const lastTxDatetime = txData[txData.length - 1]?.datetime;
+
+          // Update trade status and dates
+          await ctx.db
+            .update(trades)
+            .set({
+              status: isClosed ? "closed" : "open",
+              openDatetime: firstTxDatetime,
+              closeDatetime: isClosed ? lastTxDatetime : null,
+              feesTotal: toString(totalFees),
+              updatedAt: new Date(),
+            })
+            .where(eq(trades.id, tradeId));
         }
 
         // Update connection with new sync time

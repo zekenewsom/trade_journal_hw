@@ -29,100 +29,215 @@ trade-platform/
 │   └── web/                      # Next.js 14 App Router
 │       └── src/
 │           ├── app/              # Route handlers and pages
-│           ├── components/       # React components
-│           ├── lib/              # Utilities
+│           │   ├── (dashboard)/  # Protected dashboard routes
+│           │   │   ├── analytics/    # Analytics dashboard
+│           │   │   ├── trades/       # Trade list and detail views
+│           │   │   ├── integrations/ # CEX/DEX connections
+│           │   │   └── settings/     # User settings
+│           │   └── api/          # API routes (tRPC, auth)
+│           ├── components/       # React components (shadcn/ui)
+│           ├── lib/              # Utilities (formatting, cn)
 │           └── trpc/             # tRPC client setup
 │
 ├── packages/
 │   ├── api/                      # tRPC routers
-│   │   └── src/routers/          # Individual routers (trades, analytics, etc.)
+│   │   └── src/routers/
+│   │       ├── trades.ts         # Trade CRUD, P&L calculations
+│   │       ├── transactions.ts   # Transaction management
+│   │       ├── analytics.ts      # Analytics aggregation
+│   │       ├── integrations.ts   # CEX/DEX sync
+│   │       ├── strategies.ts     # Trading strategy management
+│   │       └── emotions.ts       # Trade emotion tracking
 │   │
 │   ├── core/                     # Business logic (SHARED)
 │   │   └── src/
 │   │       ├── pnl/              # FIFO P&L calculations
-│   │       ├── financial/        # Decimal.js utilities
-│   │       ├── validation/       # Zod schemas
-│   │       └── analytics/        # Analytics calculations
+│   │       ├── financial/        # Decimal.js arithmetic utilities
+│   │       ├── validation/       # Zod schemas for all inputs
+│   │       ├── analytics/        # Analytics engine (institutional metrics)
+│   │       └── types.ts          # Shared TypeScript types
 │   │
 │   ├── db/                       # Database layer
 │   │   └── src/
 │   │       ├── schema/           # Drizzle schema definitions
+│   │       │   ├── trades.ts     # Trades and transactions
+│   │       │   ├── users.ts      # Users and organizations
+│   │       │   ├── strategies.ts # Strategy definitions
+│   │       │   ├── emotions.ts   # Emotion tracking
+│   │       │   └── integrations.ts # Exchange connections
 │   │       └── client.ts         # Database client
 │   │
-│   └── integrations/             # CEX/DEX adapters (Phase 2+)
+│   └── integrations/             # CEX/DEX adapters
+│       └── src/
+│           └── hyperliquid/      # Hyperliquid DEX integration
+│               ├── client.ts     # API client
+│               └── transformer.ts # Data transformation
+│
+└── tooling/                      # Shared configs (ESLint, TypeScript, Tailwind)
 ```
 
-### Key Architecture Patterns
+## Key Technical Patterns
 
-#### tRPC API Layer
-- **Type-safe API**: End-to-end type safety from database to frontend
-- **Router Organization**: Separate routers per domain (trades, analytics, imports)
-- **Procedures**: Query for reads, mutation for writes
-- **Context**: Contains db client and user session
+### Multi-Tenancy
+- All data is isolated by `org_id` (organization ID)
+- Users belong to organizations via `org_members` table
+- Every database query MUST filter by `org_id` for security
+- The `getUserOrgId()` helper in routers handles org lookup from Auth0 user ID
 
-#### Database Layer (Drizzle ORM)
-- **Schema Location**: `packages/db/src/schema/`
-- **Multi-tenancy**: All tables have `org_id` for organization isolation
-- **Migrations**: Use `pnpm db:generate` then `pnpm db:migrate`
-- **Types**: Export inferred types from schema definitions
+### FIFO P&L Calculation
+- Located in `packages/core/src/pnl/index.ts`
+- Uses Decimal.js for financial precision (never native JS arithmetic)
+- Key functions:
+  - `calculateTradePnlFifo()` - Main P&L calculator
+  - `shouldCloseTrade()` - Determines if trade is fully closed
+  - `calculateOpenPositionSize()` - Calculates remaining open quantity
+- Trade status is auto-fixed in `trades.list` query to ensure consistency
 
-#### Business Logic (Core Package)
-- **Financial Precision**: Always use Decimal.js for money calculations
-- **FIFO P&L**: `packages/core/src/pnl/` - ported from Electron app
-- **Validation**: Zod schemas in `packages/core/src/validation/`
-- **Shared Types**: `packages/core/src/types/` for cross-package types
+### Analytics Engine
+- Located in `packages/core/src/analytics/index.ts`
+- Calculates institutional-grade metrics:
+  - **Risk-adjusted returns**: Sharpe ratio, Sortino ratio, Calmar ratio
+  - **Performance ratios**: Profit factor, expectancy, payoff ratio, Kelly criterion
+  - **Drawdown analysis**: Max drawdown, average drawdown, drawdown periods
+  - **Trade statistics**: Win rate, streaks, duration metrics
+  - **Volatility metrics**: Return volatility, downside deviation, Ulcer index
+  - **Time-based breakdowns**: By month, day of week, hour of day
 
-#### Frontend (Next.js 14)
-- **App Router**: All routes in `apps/web/src/app/`
-- **Server Components**: Default for pages, use 'use client' sparingly
-- **tRPC Integration**: Server-side via `@/trpc/server`, client via `@/trpc/react`
-- **Shadcn/ui**: Pre-built accessible components
+### Database Schema (Drizzle ORM)
+Key tables:
+- `users` - Auth0 user records
+- `organizations` - Multi-tenant organizations
+- `org_members` - User-organization relationships
+- `trades` - Trade records with metadata
+- `transactions` - Individual buy/sell transactions
+- `strategies` - Trading strategy definitions
+- `emotions` - Emotion tracking for trades
+- `integration_connections` - CEX/DEX API credentials
 
-## Critical Integration Points
+### tRPC API Layer
+- Type-safe from database to frontend
+- Protected procedures require Auth0 session
+- Router organization:
+  - `trades` - Trade list, detail, status recalculation
+  - `transactions` - Add/edit/delete transactions
+  - `analytics` - Aggregated analytics with filters
+  - `integrations` - List connections, sync, import
+  - `strategies` - CRUD for strategies
+  - `emotions` - Emotion definitions
 
-### Adding a New Feature
+## Critical Code Patterns
 
-1. **Database Schema**:
-   - Add table in `packages/db/src/schema/`
-   - Export from `packages/db/src/schema/index.ts`
-   - Run `pnpm db:generate && pnpm db:push`
-
-2. **API Router**:
-   - Create router in `packages/api/src/routers/`
-   - Add to root router in `packages/api/src/root.ts`
-   - Define Zod input schemas
-
-3. **Frontend**:
-   - Create page in `apps/web/src/app/`
-   - Use tRPC hooks: `api.routerName.procedureName.useQuery()`
-
-### P&L Calculations
-
-**CRITICAL**: Always use the core package functions for financial calculations.
+### Financial Arithmetic
+**ALWAYS use Decimal.js utilities from core package:**
 
 ```typescript
 // CORRECT
-import { calculateTradePnlFifo } from "@trade-platform/core/pnl";
-import { add, subtract, multiply, divide } from "@trade-platform/core/financial";
+import { toDecimal, add, subtract, multiply, divide, toString } from "@trade-platform/core/financial";
+const total = add(toDecimal(price), toDecimal(fee));
 
 // WRONG - Never use native JS arithmetic for money
-const pnl = sellPrice - buyPrice; // Floating point errors!
+const total = price + fee; // Floating point errors!
 ```
 
-### Validation
+### Trade Status Logic
+Trade status is determined by transaction analysis, not stored values:
 
-Use Zod schemas from core for all user input:
+```typescript
+import { shouldCloseTrade } from "@trade-platform/core/pnl";
+
+// Returns true if open position size is effectively zero
+const isClosed = shouldCloseTrade(transactions, tradeDirection);
+```
+
+The `trades.list` router auto-fixes mismatched statuses.
+
+### Input Validation
+All user inputs are validated with Zod schemas:
 
 ```typescript
 import { tradeInputSchema, transactionInputSchema } from "@trade-platform/core/validation";
 ```
 
-## Styling Conventions
+## Frontend Patterns
 
-- **Tailwind CSS**: Primary styling approach
-- **Shadcn/ui**: Use for all standard UI components
-- **Dark Theme**: Default and only theme (dark mode only)
-- **CSS Variables**: Theme tokens in `globals.css`
+### Page Structure
+- Server components by default (no 'use client' directive)
+- Client components only for interactivity (forms, modals, filters)
+- Data fetching in server components via `api.router.procedure()`
+
+### tRPC Usage
+```typescript
+// Server component
+import { api } from "@/trpc/server";
+const trades = await api.trades.list();
+
+// Client component
+import { api } from "@/trpc/react";
+const { data: trades, isLoading } = api.trades.list.useQuery();
+```
+
+### Styling
+- Tailwind CSS for all styling
+- shadcn/ui components in `src/components/ui/`
+- Dark theme only (GitHub-inspired)
+- CSS variables for theme tokens in `globals.css`
+
+### Formatting Utilities
+Located in `apps/web/src/lib/format.ts`:
+- `formatCurrency()` - Format money values
+- `formatDate()` - Format dates consistently
+- `formatNumber()` - Format numbers with options
+- `formatPercent()` - Format percentages
+- `formatDuration()` - Format time durations
+
+## Integration Architecture
+
+### Adding a New Exchange Integration
+
+1. **Create adapter in `packages/integrations/src/<exchange>/`**:
+   - `client.ts` - API client with authentication
+   - `transformer.ts` - Transform exchange data to standard format
+
+2. **Add to integrations router**:
+   - Add sync function in `packages/api/src/routers/integrations.ts`
+   - Handle credential storage and trade import
+
+3. **Update UI**:
+   - Add exchange option in integrations page
+   - Add connection form with required credentials
+
+### Current Integrations
+- **Hyperliquid**: DEX integration via public API
+  - Fetches fills (trades) by wallet address
+  - Transforms to standard transaction format
+  - Supports incremental sync (since last timestamp)
+
+## Common Development Tasks
+
+### Adding a New Database Table
+1. Create schema in `packages/db/src/schema/<table>.ts`
+2. Add relations if needed
+3. Export from `packages/db/src/schema/index.ts`
+4. Run `pnpm db:push` (dev) or `pnpm db:generate && pnpm db:migrate` (prod)
+
+### Adding a New API Endpoint
+1. Create/modify router in `packages/api/src/routers/`
+2. Define input schema with Zod
+3. Implement procedure (query or mutation)
+4. Add to root router if new file
+5. Use from frontend: `api.router.procedure.useQuery()` or `.useMutation()`
+
+### Adding a New Page
+1. Create folder in `apps/web/src/app/(dashboard)/`
+2. Add `page.tsx` (server component by default)
+3. Add `loading.tsx` for suspense fallback
+4. Use layout from parent or create new `layout.tsx`
+
+### Adding New Analytics Metrics
+1. Add type definition in `packages/core/src/types.ts` (AnalyticsData interface)
+2. Implement calculation in `packages/core/src/analytics/index.ts`
+3. Update analytics router if needed
+4. Display in analytics dashboard
 
 ## Environment Variables
 
@@ -138,31 +253,13 @@ Required for development:
 
 See `.env.example` for full list.
 
-## Testing
+## Security Notes
 
-- **Core Package**: Unit tests with Vitest for P&L calculations
-- **API**: Integration tests for tRPC procedures
-- **E2E**: Playwright for critical user flows (planned)
-
-## Common Tasks
-
-### Adding a new database table
-1. Create schema file in `packages/db/src/schema/`
-2. Add relations if needed
-3. Export from `packages/db/src/schema/index.ts`
-4. Run `pnpm db:push` (dev) or `pnpm db:generate && pnpm db:migrate` (prod)
-
-### Adding a new API endpoint
-1. Create or modify router in `packages/api/src/routers/`
-2. Define input schema with Zod
-3. Implement procedure (query or mutation)
-4. Use from frontend: `api.router.procedure.useQuery()` or `.useMutation()`
-
-### Adding a new page
-1. Create folder in `apps/web/src/app/`
-2. Add `page.tsx` (server component by default)
-3. Add `loading.tsx` for suspense fallback if needed
-4. Use layout from parent or create new `layout.tsx`
+- **Input Validation**: All tRPC procedures validate input with Zod
+- **Auth**: Auth0 handles authentication, middleware protects routes
+- **Multi-tenancy**: Always filter by `org_id` in database queries
+- **Secrets**: Never commit `.env.local`, use `.env.example` as template
+- **API Keys**: Integration credentials stored encrypted in database
 
 ## Performance Considerations
 
@@ -170,10 +267,11 @@ See `.env.example` for full list.
 - **Data Fetching**: Fetch data in server components when possible
 - **Streaming**: Use `<Suspense>` for progressive loading
 - **Query Optimization**: Use Drizzle's query builder for efficient JOINs
+- **Decimal.js**: Used for precision but has performance overhead - acceptable for financial accuracy
 
-## Security Notes
+## Known Issues / Technical Debt
 
-- **Input Validation**: All tRPC procedures validate input with Zod
-- **Auth**: Auth0 handles authentication, middleware protects routes
-- **Multi-tenancy**: Always filter by `org_id` in database queries
-- **Secrets**: Never commit `.env.local`, use `.env.example` as template
+- Unrealized P&L requires price feeds (not yet implemented)
+- Excel/CSV import not yet implemented
+- Some TypeScript strict mode issues in db/integrations packages
+- Integration sync is manual (Inngest scheduled jobs planned)

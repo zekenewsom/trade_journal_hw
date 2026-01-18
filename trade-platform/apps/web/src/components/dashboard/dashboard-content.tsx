@@ -31,8 +31,8 @@ export function DashboardContent() {
     );
   }
 
-  const totalPnl = parseFloat(analytics.totalRealizedPnl) || 0;
-  const winRate = analytics.winRate || 0;
+  const totalPnl = parseFloat(analytics.totalRealizedNetPnl) || 0;
+  const winRate = analytics.winRateOverall || 0;
 
   return (
     <>
@@ -69,10 +69,10 @@ export function DashboardContent() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatPercent(winRate)}
+              {winRate !== null ? formatPercent(winRate) : "N/A"}
             </div>
             <p className="text-xs text-muted-foreground">
-              {analytics.winningTrades}W / {analytics.losingTrades}L / {analytics.breakEvenTrades}BE
+              {analytics.numberOfWinningTrades}W / {analytics.numberOfLosingTrades}L / {analytics.numberOfBreakEvenTrades}BE
             </p>
           </CardContent>
         </Card>
@@ -84,10 +84,10 @@ export function DashboardContent() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-500">
-              {formatCurrency(analytics.avgWin)}
+              {formatCurrency(analytics.averageWinPnl)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Largest: {formatCurrency(analytics.largestWin)}
+              Largest: {formatCurrency(analytics.largestWinPnl)}
             </p>
           </CardContent>
         </Card>
@@ -99,10 +99,10 @@ export function DashboardContent() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-500">
-              {formatCurrency(analytics.avgLoss)}
+              {formatCurrency(analytics.averageLossPnl)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Largest: {formatCurrency(analytics.largestLoss)}
+              Largest: {formatCurrency(analytics.largestLossPnl)}
             </p>
           </CardContent>
         </Card>
@@ -165,13 +165,13 @@ export function DashboardContent() {
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Max Drawdown</dt>
                 <dd className="font-medium">
-                  {formatNumber(analytics.maxDrawdown, { maximumFractionDigits: 2 })}%
+                  {formatNumber(analytics.maxDrawdownPercentage, { maximumFractionDigits: 2 })}%
                 </dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Profit Factor</dt>
                 <dd className="font-medium">
-                  {formatNumber(analytics.profitFactor, { maximumFractionDigits: 2 })}
+                  {analytics.profitFactor !== null ? formatNumber(analytics.profitFactor, { maximumFractionDigits: 2 }) : "N/A"}
                 </dd>
               </div>
               <div className="flex justify-between">

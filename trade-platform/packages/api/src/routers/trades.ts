@@ -6,8 +6,8 @@ import {
   updateTradeMetadataSchema,
   updateMarkPriceSchema,
 } from "@trade-platform/core/validation";
-import { calculateTradePnlFifo } from "@trade-platform/core/pnl";
-import { toDecimal, toString } from "@trade-platform/core/financial";
+import { calculateTradePnlFifo, shouldCloseTrade } from "@trade-platform/core/pnl";
+import { toDecimal, toString, add } from "@trade-platform/core/financial";
 import type { TradeData, TransactionData } from "@trade-platform/core";
 
 /**
@@ -106,12 +106,60 @@ export const tradesRouter = createTRPCRouter({
 
         const pnl = calculateTradePnlFifo(tradeData, txData);
 
+        // Auto-fix trade status if needed
+        const shouldBeClosed = txData.length > 0 && shouldCloseTrade(txData, trade.tradeDirection);
+        const currentStatus = trade.status;
+        const correctStatus = shouldBeClosed ? "closed" : "open";
+
+        if (currentStatus !== correctStatus && txData.length > 0) {
+          // Fix the status in the background
+          const lastTxDatetime = txData[txData.length - 1]?.datetime;
+          await ctx.db
+            .update(trades)
+            .set({
+              status: correctStatus,
+              closeDatetime: shouldBeClosed ? lastTxDatetime : null,
+              updatedAt: new Date(),
+            })
+            .where(eq(trades.id, trade.id));
+        }
+
+        // Calculate average buy and sell prices
+        let totalBuyQty = toDecimal(0);
+        let totalBuyValue = toDecimal(0);
+        let totalSellQty = toDecimal(0);
+        let totalSellValue = toDecimal(0);
+
+        for (const tx of txData) {
+          const qty = toDecimal(tx.quantity);
+          const price = toDecimal(tx.price);
+          const value = qty.times(price);
+
+          if (tx.action === "buy") {
+            totalBuyQty = add(totalBuyQty, qty);
+            totalBuyValue = add(totalBuyValue, value);
+          } else {
+            totalSellQty = add(totalSellQty, qty);
+            totalSellValue = add(totalSellValue, value);
+          }
+        }
+
+        const avgBuyPrice = totalBuyQty.greaterThan(0)
+          ? toString(totalBuyValue.dividedBy(totalBuyQty))
+          : null;
+        const avgSellPrice = totalSellQty.greaterThan(0)
+          ? toString(totalSellValue.dividedBy(totalSellQty))
+          : null;
+
         return {
           ...trade,
+          status: correctStatus, // Use corrected status
           currentOpenQuantity: pnl.openQuantity,
           unrealizedPnl: pnl.unrealizedGrossPnl,
           realizedPnl: pnl.realizedNetPnl,
           averageOpenPrice: pnl.averageOpenPrice,
+          avgBuyPrice,
+          avgSellPrice,
           outcome: pnl.outcome,
         };
       })
@@ -306,4 +354,92 @@ export const tradesRouter = createTRPCRouter({
       await ctx.db.delete(trades).where(eq(trades.id, input.id));
       return { success: true };
     }),
+
+  /**
+   * Recalculate statuses for all trades in the user's organization.
+   * This fixes any trades that should be closed but are marked as open.
+   */
+  recalculateStatuses: protectedProcedure.mutation(async ({ ctx }) => {
+    const orgId = await getUserOrgId(ctx.db, ctx.userId!);
+
+    if (!orgId) {
+      return { updated: 0, errors: [] };
+    }
+
+    // Get all trades for this org
+    const allTrades = await ctx.db
+      .select()
+      .from(trades)
+      .where(eq(trades.orgId, orgId));
+
+    let updated = 0;
+    const errors: Array<{ tradeId: string; error: string }> = [];
+
+    for (const trade of allTrades) {
+      try {
+        // Get all transactions for this trade
+        const tradeTransactions = await ctx.db
+          .select()
+          .from(transactions)
+          .where(eq(transactions.tradeId, trade.id))
+          .orderBy(transactions.datetime);
+
+        if (tradeTransactions.length === 0) continue;
+
+        // Convert to TransactionData format
+        const txData: TransactionData[] = tradeTransactions.map((tx) => ({
+          id: tx.id,
+          tradeId: tx.tradeId,
+          action: tx.action,
+          quantity: tx.quantity,
+          price: tx.price,
+          datetime: tx.datetime,
+          fees: tx.fees || "0",
+          notes: tx.notes,
+        }));
+
+        // Calculate total fees
+        const totalFees = txData.reduce(
+          (sum, tx) => add(sum, tx.fees),
+          toDecimal(0)
+        );
+
+        // Check if trade should be closed
+        const isClosed = shouldCloseTrade(txData, trade.tradeDirection);
+        const currentStatus = trade.status;
+        const newStatus = isClosed ? "closed" : "open";
+
+        // Get first and last transaction dates
+        const firstTxDatetime = txData[0]?.datetime;
+        const lastTxDatetime = txData[txData.length - 1]?.datetime;
+
+        // Only update if status has changed
+        if (currentStatus !== newStatus) {
+          await ctx.db
+            .update(trades)
+            .set({
+              status: newStatus,
+              openDatetime: firstTxDatetime,
+              closeDatetime: isClosed ? lastTxDatetime : null,
+              feesTotal: toString(totalFees),
+              updatedAt: new Date(),
+            })
+            .where(eq(trades.id, trade.id));
+
+          updated++;
+        }
+      } catch (error) {
+        errors.push({
+          tradeId: trade.id,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+
+    return {
+      updated,
+      total: allTrades.length,
+      errors,
+    };
+  }),
 });

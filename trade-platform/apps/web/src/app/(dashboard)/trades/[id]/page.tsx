@@ -25,6 +25,28 @@ export default async function TradePage({ params }: TradePageProps) {
     ? Number(trade.pnl.realizedNetPnl)
     : null;
 
+  // Calculate total bought and sold quantities with average prices
+  const totals = trade.transactions?.reduce(
+    (acc, tx) => {
+      const qty = Number(tx.quantity);
+      const price = Number(tx.price);
+      const value = qty * price;
+
+      if (tx.action === "buy") {
+        acc.boughtQty += qty;
+        acc.boughtValue += value;
+      } else {
+        acc.soldQty += qty;
+        acc.soldValue += value;
+      }
+      return acc;
+    },
+    { boughtQty: 0, boughtValue: 0, soldQty: 0, soldValue: 0 }
+  ) || { boughtQty: 0, boughtValue: 0, soldQty: 0, soldValue: 0 };
+
+  const avgBuyPrice = totals.boughtQty > 0 ? totals.boughtValue / totals.boughtQty : null;
+  const avgSellPrice = totals.soldQty > 0 ? totals.soldValue / totals.soldQty : null;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -75,19 +97,43 @@ export default async function TradePage({ params }: TradePageProps) {
                 </div>
               )}
               <div className="flex justify-between">
+                <dt className="text-muted-foreground">Total Bought</dt>
+                <dd className="font-mono font-medium text-green-500">
+                  {totals.boughtQty.toLocaleString()}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Avg Buy Price</dt>
+                <dd className="font-mono font-medium text-green-500">
+                  {avgBuyPrice !== null ? formatCurrency(avgBuyPrice) : "-"}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Total Sold</dt>
+                <dd className="font-mono font-medium text-red-500">
+                  {totals.soldQty.toLocaleString()}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Avg Sell Price</dt>
+                <dd className="font-mono font-medium text-red-500">
+                  {avgSellPrice !== null ? formatCurrency(avgSellPrice) : "-"}
+                </dd>
+              </div>
+              <div className="flex justify-between">
                 <dt className="text-muted-foreground">Open Quantity</dt>
                 <dd className="font-mono font-medium">
                   {trade.pnl?.openQuantity || "0"}
                 </dd>
               </div>
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Avg Open Price</dt>
-                <dd className="font-mono font-medium">
-                  {trade.pnl?.averageOpenPrice
-                    ? formatCurrency(Number(trade.pnl.averageOpenPrice))
-                    : "-"}
-                </dd>
-              </div>
+              {trade.status === "open" && trade.pnl?.averageOpenPrice && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Avg Open Price</dt>
+                  <dd className="font-mono font-medium">
+                    {formatCurrency(Number(trade.pnl.averageOpenPrice))}
+                  </dd>
+                </div>
+              )}
             </dl>
           </CardContent>
         </Card>
